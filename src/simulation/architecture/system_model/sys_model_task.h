@@ -52,10 +52,12 @@ public:
 	void enableTask() {this->taskActive = true;}
 	void disableTask() {this->taskActive = false;}
     void updatePeriod(uint64_t newPeriod);
+    void updateParentProc(std::string parent) {this->parentProc = parent;}
     
 public:
     std::vector<ModelPriorityPair> TaskModels;  //!< -- Array that has pointers to all task sysModels
     std::string TaskName;  //!< -- Identifier for Task
+    std::string parentProc; //!< -- Process that calls this task
     uint64_t NextStartTime;  //!< [ns] Next time to start task
     uint64_t NextPickupTime;  //!< [ns] Next time read Task outputs
     uint64_t TaskPeriod;  //!< [ns] Cycle rate for Task

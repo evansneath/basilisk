@@ -18,6 +18,7 @@
  */
 
 #include "architecture/system_model/sys_model_task.h"
+#include "architecture/messaging/system_messaging.h"
 #include <cstring>
 #include <iostream>
 
@@ -142,6 +143,8 @@ void SysModelTask::AddNewObject(SysModel *NewModel, int32_t Priority)
     //! - Set the local pair with the requested priority and mode
     LocalPair.CurrentModelPriority = Priority;
     LocalPair.ModelPtr = NewModel;
+    SystemMessaging::GetInstance()->addModuleToProcess(NewModel->moduleID,
+            parentProc);
     //! - Loop through the ModelPair vector and if Priority is higher than next, insert
     for(ModelPair = this->TaskModels.begin(); ModelPair != this->TaskModels.end();
         ModelPair++)

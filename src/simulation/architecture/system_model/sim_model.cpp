@@ -451,3 +451,22 @@ std::set<std::pair<long int, long int>> SimModel::getMessageExchangeData(std::st
     return(returnPairs);
 
 }
+
+std::set<long int> SimModel::findChildModules(std::string procName) {
+
+    std::set<int64_t> outSet;
+    int64_t buffSelect;
+    MessageStorageContainer* msgPtr;
+
+    buffSelect = SystemMessaging::GetInstance()->findMessageBuffer(procName);
+    if(buffSelect < 0)
+    {
+        BSK_PRINT(MSG_ERROR, "Attempted to add module to process: %s that doesn't exist!",
+                  procName.c_str());
+        return outSet;
+    }
+    msgPtr = SystemMessaging::GetInstance()->getProcData(buffSelect);
+    outSet = msgPtr->moduleIDs;
+
+    return outSet;
+}

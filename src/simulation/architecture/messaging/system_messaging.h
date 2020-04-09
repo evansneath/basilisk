@@ -78,13 +78,15 @@ typedef struct {
 /*!
  * Basically the container for a single process buffer
  */
-typedef struct {
+class MessageStorageContainer{
+public:
     std::string bufferName;  //! (-) Name of this process buffer for application access
     BlankStorage messageStorage;  //! (-) The storage buffer associated with this process
     std::vector<AllowAccessData> pubData;  //! (-) Entry of publishers for each message ID
     std::vector<AllowAccessData> subData;  //! (-) Entry of subscribers for each message ID
     std::vector<MessageExchangeData> exchangeData;  //! [-] List of write/read pairs
-}MessageStorageContainer;
+    std::set<int64_t> moduleIDs; //! [-] List of module IDs that are on this
+};
 
 /*!
  * another header/key to a message
@@ -140,6 +142,8 @@ public:
     bool obtainWriteRights(int64_t messageID, int64_t moduleID);  //! -- grants rights to the requesting module
     bool obtainReadRights(int64_t messageID, int64_t moduleID);  //! -- grants rights to the requesting module
     uint64_t getFailureCount() {return (this->CreateFails + this->ReadFails + this->WriteFails);}
+    void addModuleToProcess(int64_t moduleID, std::string procName);
+    MessageStorageContainer* getProcData(int64_t buffSelect);
 
 private:
     SystemMessaging();

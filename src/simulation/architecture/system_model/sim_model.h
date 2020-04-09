@@ -71,6 +71,7 @@ public:
     std::set<std::pair<long int, long int>> getMessageExchangeData(std::string messageName,
         std::set<unsigned long> procList  = std::set<unsigned long>());
     void terminateSimulation();
+    std::set<long int> findChildModules(std::string procName);
     BSKLogger bskLogger;                      //!< -- BSK Logging
 
 public:

@@ -183,6 +183,7 @@ void SysProcess::addNewTask(SysModelTask *newTask, int32_t taskPriority)
     localEntry.NextTaskStart = newTask->NextStartTime;
     localEntry.taskPriority = taskPriority;
     this->scheduleTask(localEntry);
+    newTask->updateParentProc(processName);
     this->enableProcess();
 }
 

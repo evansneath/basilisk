@@ -49,6 +49,7 @@ namespace std {
    %template(StringVector) vector<string>;
    %template(StringSet) set<string>;
    %template(intSet) set<unsigned long>;
+   %template(int64Set) set<long int>;
    %template(ConstCharVector) vector<const char*>;
    %template(messsageLogVector) vector<messageLogContainer>;
    %template() std::pair<long int, long int>;

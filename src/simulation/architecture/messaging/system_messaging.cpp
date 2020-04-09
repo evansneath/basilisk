@@ -734,3 +734,35 @@ std::set<std::pair<long int, long int>>
     it += messageID;
     return(it->exchangeList);
 }
+
+void SystemMessaging::addModuleToProcess(int64_t moduleID, std::string procName) {
+
+    int64_t buffSelect;
+    MessageStorageContainer* msgPtr;
+
+    buffSelect = this->findMessageBuffer(procName);
+    if(buffSelect < 0)
+    {
+        BSK_PRINT(MSG_ERROR, "Attempted to add module to process: %s that doesn't exist!",
+                procName.c_str());
+        return;
+    }
+    msgPtr = this->getProcData(buffSelect);
+    msgPtr->moduleIDs.insert(moduleID);
+
+}
+
+MessageStorageContainer *SystemMessaging::getProcData(int64_t buffSelect) {
+
+    std::vector<MessageStorageContainer*>::iterator it;
+    it = this->dataBuffers.begin();
+
+    if(buffSelect >= this->dataBuffers.size())
+    {
+        BSK_PRINT(MSG_ERROR,"You've attempted to access a message buffer that does not exist. Yikes.");
+        this->messageStorage = *this->dataBuffers.begin();
+        return nullptr;
+    }
+    it += buffSelect;
+    return (*it);
+}
