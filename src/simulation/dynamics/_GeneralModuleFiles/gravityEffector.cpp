@@ -359,7 +359,7 @@ void GravBodyData::loadEphemeris(int64_t moduleID)
 {
     bool msgRead;
     msgRead = SystemMessaging::GetInstance()->ReadMessage(this->bodyMsgID, &this->localHeader,
-        sizeof(SpicePlanetStateSimMsg), reinterpret_cast<uint8_t *>(&this->localPlanet));
+        sizeof(SpicePlanetStateSimMsg), reinterpret_cast<uint8_t *>(&this->localPlanet), moduleID);
     if (!msgRead) {
         /* use default zero planet state information, including a zero orientation */
         m33SetIdentity(this->localPlanet.J20002Pfix);

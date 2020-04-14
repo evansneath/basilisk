@@ -44,6 +44,8 @@ SpacecraftPlus::SpacecraftPlus()
     // - Set integrator as RK4 by default
     this->integrator = new svIntegratorRK4(this);
 
+    this->gravField.moduleID = this->moduleID; //A little counter-intuitive, but this child shares its ID with the parent
+
     return;
 }
 

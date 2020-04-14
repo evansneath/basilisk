@@ -96,7 +96,7 @@ void PlanetHeading::writeMessages(uint64_t CurrentSimNanos) {
 
     /*! - write the output message */
     SystemMessaging::GetInstance()->WriteMessage(this->planetHeadingOutMsgId, CurrentSimNanos, sizeof(BodyHeadingSimMsg),
-                                  reinterpret_cast<uint8_t*>(&planetHeadingOutMsgData));
+                                  reinterpret_cast<uint8_t*>(&planetHeadingOutMsgData), this->moduleID);
 }
 
 /*! This method is used to reset the module. Currently no tasks are required.

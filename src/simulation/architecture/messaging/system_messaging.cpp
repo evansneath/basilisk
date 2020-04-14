@@ -33,7 +33,6 @@ SystemMessaging* SystemMessaging::TheInstance = NULL;
  */
 SystemMessaging :: SystemMessaging()
 {
-    this->messageStorage = NULL;
     this->CreateFails = 0;
     this->WriteFails = 0;
     this->ReadFails = 0;
@@ -45,7 +44,6 @@ SystemMessaging :: SystemMessaging()
  */
 SystemMessaging::~SystemMessaging()
 {
-    this->messageStorage = NULL;
 }
 
 /*!
@@ -74,54 +72,47 @@ int64_t SystemMessaging::AttachStorageBucket(std::string bufferName)
     this->dataBuffers.push_back(newContainer);
     bufferCount = (int64_t) this->dataBuffers.size() - 1;
     newContainer->bufferName = bufferName;
-    this->messageStorage = *(this->dataBuffers.end()-1);
-    this->SetNumMessages(0);
+    this->SetNumMessages(bufferCount, 0);
     return(bufferCount);
 }
-/*! This method selects which message buffer is being read from when
- * messageStorage is referenced
- * @return void
- * @param uint64_t bufferUse
- */
-void SystemMessaging::selectMessageBuffer(int64_t bufferUse)
-{
-    std::vector<MessageStorageContainer*>::iterator it;
-    it = this->dataBuffers.begin();
 
-    if(bufferUse >= this->dataBuffers.size())
-    {
-        BSK_PRINT(MSG_ERROR,"You've attempted to access a message buffer that does not exist. Yikes.");
-        this->messageStorage = *this->dataBuffers.begin();
-        return;
-    }
-    it += bufferUse;
-    this->messageStorage = (*it);
-}
 
 /*!
  * This method records the current number of messages in the messageStorage space
  * @return void
  * @param int64_t MessageCount
  */
-void SystemMessaging::SetNumMessages(int64_t MessageCount)
+void SystemMessaging::SetNumMessages(int64_t buffSelect, int64_t MessageCount)
 {
-    if(this->messageStorage == NULL)
+
+    MessageStorageContainer *msgPtr;
+
+    msgPtr = this->getProcData(buffSelect);
+    if(msgPtr == NULL)
     {
         BSK_PRINT(MSG_ERROR,"Received a request to set num messages for a NULL buffer.");
         return;
     }
-    memcpy(&(this->messageStorage->messageStorage.StorageBuffer[0]), &MessageCount, sizeof(int64_t));
+    memcpy(&(msgPtr->messageStorage.StorageBuffer[0]), &MessageCount, sizeof(int64_t));
 }
 
 /*!
  * This method sets all bits in messageSpace for the current buffer to 0
  * @return void
  */
-void SystemMessaging::ClearMessageBuffer()
+void SystemMessaging::ClearMessageBuffer(int64_t buffSelect)
 {
-    memset(&(this->messageStorage->messageStorage.StorageBuffer[0]), 0x0,
-           this->messageStorage->messageStorage.GetCurrentSize());
-    this->SetNumMessages(0);
+    MessageStorageContainer *msgPtr;
+
+    msgPtr = this->getProcData(buffSelect);
+    if(msgPtr == NULL)
+    {
+        BSK_PRINT(MSG_ERROR,"Received a request to set num messages for a NULL buffer.");
+        return;
+    }
+    memset(&(msgPtr->messageStorage.StorageBuffer[0]), 0x0,
+           msgPtr->messageStorage.GetCurrentSize());
+    this->SetNumMessages(buffSelect, 0);
 }
 
 /*!
@@ -140,7 +131,7 @@ void SystemMessaging::clearMessaging()
     this->CreateFails = 0;
     this->WriteFails = 0;
     this->ReadFails = 0;
-    this->messageStorage = NULL;
+
 }
 
 /*! This method gets the number of messages in the selected or requested buffer
@@ -148,13 +139,14 @@ void SystemMessaging::clearMessaging()
  * @param int32_t bufferSelect
  * @return int64_t CurrentMessageCount
  */
-int64_t SystemMessaging::GetMessageCount(int32_t bufferSelect)
+int64_t SystemMessaging::GetMessageCount(int64_t bufferSelect)
 {
     int64_t *CurrentMessageCount;
+    MessageStorageContainer *msgPtr;
+
     if(bufferSelect < 0)
     {
-       CurrentMessageCount = reinterpret_cast<int64_t*>
-           (&this->messageStorage->messageStorage.StorageBuffer[0]);
+        bufferSelect = 0;
     }
     else
     {
@@ -164,6 +156,10 @@ int64_t SystemMessaging::GetMessageCount(int32_t bufferSelect)
         CurrentMessageCount = reinterpret_cast<int64_t*>
         (&((*it)->messageStorage.StorageBuffer[0]));
     }
+    msgPtr = this->getProcData(bufferSelect);
+    CurrentMessageCount = reinterpret_cast<int64_t*>
+    (&(msgPtr->messageStorage.StorageBuffer[0]));
+
     return(*CurrentMessageCount);
 }
 
@@ -173,12 +169,20 @@ int64_t SystemMessaging::GetMessageCount(int32_t bufferSelect)
  *  - (the size of a message + a single message header) * the number of buffers for that message
  * @return void
  */
-uint64_t SystemMessaging::GetCurrentSize()
+uint64_t SystemMessaging::GetCurrentSize(int64_t buffSelect)
 {
+    MessageStorageContainer *msgPtr;
+
+    msgPtr = this->getProcData(buffSelect);
+    if(msgPtr == NULL)
+    {
+        BSK_PRINT(MSG_ERROR,"Received a request to set num messages for a NULL buffer.");
+        return 0;
+    }
     uint64_t TotalBufferSize = sizeof(int64_t); // -- The num-messages count;
     MessageHeaderData *MessHeader = reinterpret_cast<MessageHeaderData *>
-    (&this->messageStorage->messageStorage.StorageBuffer[sizeof(int64_t)]);
-    int64_t TotalMessageCount = this->GetMessageCount();
+    (&msgPtr->messageStorage.StorageBuffer[sizeof(int64_t)]);
+    int64_t TotalMessageCount = this->GetMessageCount(buffSelect);
     uint64_t SingleHeaderSize = sizeof(SingleMessageHeader);
     for(int64_t i=0; i<TotalMessageCount; i++)
     {
@@ -206,18 +210,23 @@ int64_t SystemMessaging::CreateNewMessage(std::string MessageName,
     uint64_t MaxSize, uint64_t NumMessageBuffers, std::string messageStruct,
     int64_t moduleID)
 {
-    if (this->FindMessageID(MessageName) >= 0)
+    MessageStorageContainer *msgPtr;
+    int64_t activeBuff;
+    int64_t messageIDOut;
+
+    msgPtr = this->findResProcess(moduleID, &activeBuff);
+    if (this->FindMessageID(MessageName, activeBuff) >= 0)
     {
         BSK_PRINT(MSG_INFORMATION,"The message %s was created more than once.", MessageName.c_str());
         if(moduleID >= 0)
         {
             std::vector<AllowAccessData>::iterator it;
-            it = this->messageStorage->pubData.begin();
-            it += this->FindMessageID(MessageName);
+            it = msgPtr->pubData.begin();
+            it += this->FindMessageID(MessageName, activeBuff);
             it->accessList.insert(moduleID);
             it->publishedHere = true;
         }
-    	return(this->FindMessageID(MessageName));
+    	return(this->FindMessageID(MessageName, activeBuff));
     }
     if(MessageName == "")
     {
@@ -235,23 +244,46 @@ int64_t SystemMessaging::CreateNewMessage(std::string MessageName,
     {
         BSK_PRINT(MSG_WARNING,"You created a message with only one buffer. This might compromise the message integrity. Watch out.");
     }
-    uint64_t InitSize = this->GetCurrentSize();
+
+    messageIDOut = this->createMessageInBuffer(MessageName, MaxSize, NumMessageBuffers, messageStruct, activeBuff);
+
+    if(moduleID >= 0)
+    {
+        std::vector<AllowAccessData>::iterator it;
+        it = msgPtr->pubData.begin();
+        it += this->FindMessageID(MessageName, activeBuff);
+        it->accessList.insert(moduleID);
+        it->publishedHere = true;
+    }
+
+
+    return(messageIDOut);
+}
+
+int64_t SystemMessaging::createMessageInBuffer(std::string MessageName, uint64_t MaxSize, uint64_t NumMessageBuffers,
+                                               std::string messageStruct, int64_t bufferSelect) {
+
+    MessageStorageContainer *msgPtr;
+
+    msgPtr = this->getProcData(bufferSelect);
+
+    uint64_t InitSize = this->GetCurrentSize(bufferSelect);
     uint64_t StorageRequired = InitSize + sizeof(MessageHeaderData) +
-                            (MaxSize+sizeof(MessageHeaderData))*NumMessageBuffers;
-    this->messageStorage->messageStorage.IncreaseStorage(StorageRequired);
-    uint8_t *MessagingStart = &(this->messageStorage->messageStorage.StorageBuffer[(uint64_t) this->GetMessageCount()*
-                                                              sizeof(MessageHeaderData) + sizeof(uint64_t)]);
-    if(this->GetMessageCount() > 0)
+                               (MaxSize+sizeof(MessageHeaderData))*NumMessageBuffers;
+    msgPtr->messageStorage.IncreaseStorage(StorageRequired);
+    uint8_t *MessagingStart = &(msgPtr->messageStorage.StorageBuffer[(uint64_t) this->GetMessageCount(bufferSelect)*
+                                                                     sizeof(MessageHeaderData) + sizeof(uint64_t)]);
+    if(this->GetMessageCount(bufferSelect) > 0)
     {
         // leave the MessageHeaderData structs where they are but shift the
         // message data to make room for a new MessageHeaderData
         uint8_t *NewMessagingStart = MessagingStart + sizeof(MessageHeaderData);
         memmove(NewMessagingStart, MessagingStart, InitSize -
-                (uint64_t) this->GetMessageCount()* sizeof(MessageHeaderData));
+                                                   (uint64_t) this->GetMessageCount(bufferSelect)* sizeof(MessageHeaderData));
         memset(MessagingStart, 0x0, sizeof(MessageHeaderData));
-        for(uint32_t i=0; i<this->GetMessageCount(); i++)
+        for(uint32_t i=0; i<this->GetMessageCount(bufferSelect); i++)
         {
-            MessageHeaderData *UpdateHeader = this->FindMsgHeader(i);
+            MessageHeaderData *UpdateHeader = this->FindMsgHeader(i, bufferSelect);
             UpdateHeader->StartingOffset += sizeof(MessageHeaderData);
         }
     }
@@ -285,21 +317,19 @@ int64_t SystemMessaging::CreateNewMessage(std::string MessageName,
     NewHeader->previousPublisher = -1;
     NewHeader->StartingOffset = InitSize + sizeof(MessageHeaderData);
     //
-    memset(&(this->messageStorage->messageStorage.StorageBuffer[NewHeader->StartingOffset]), 0x0,
+    memset(&(msgPtr->messageStorage.StorageBuffer[NewHeader->StartingOffset]), 0x0,
            NumMessageBuffers*(MaxSize + sizeof(SingleMessageHeader)));
-    this->SetNumMessages(this->GetMessageCount() + 1);
+    this->SetNumMessages(bufferSelect, this->GetMessageCount(bufferSelect) + 1);
+
     AllowAccessData dataList;
     MessageExchangeData exList;
     dataList.publishedHere = false;
-    this->messageStorage->subData.push_back(dataList); //!< No subscribers yet
-    if(moduleID >= 0)
-    {
-        dataList.accessList.insert(moduleID);
-        dataList.publishedHere = true;
-    }
-    this->messageStorage->pubData.push_back(dataList);
-    this->messageStorage->exchangeData.push_back(exList);
-    return(this->GetMessageCount() - 1);
+    msgPtr->subData.push_back(dataList); //!< No subscribers yet
+
+    msgPtr->pubData.push_back(dataList);
+    msgPtr->exchangeData.push_back(exList);
+
+    return(this->GetMessageCount(bufferSelect) - 1);
 }
 
 /*!
@@ -314,14 +344,19 @@ int64_t SystemMessaging::subscribeToMessage(std::string messageName,
 {
     int64_t messageID;
     std::vector<AllowAccessData>::iterator it;
-    messageID = this->FindMessageID(messageName);
+    MessageStorageContainer *msgPtr;
+    int64_t activeBuff;
+
+    msgPtr = this->findResProcess(moduleID, &activeBuff);
+    messageID = this->FindMessageID(messageName, activeBuff);
     if(messageID < 0)
     {
-        messageID = this->CreateNewMessage(messageName, messageSize, 2);
+        messageID = this->CreateNewMessage(messageName, messageSize, 2,
+                "", moduleID);
     }
     if(moduleID >= 0 && messageID >= 0)
     {
-        it = this->messageStorage->subData.begin();
+        it = msgPtr->subData.begin();
         it += messageID;
         it->accessList.insert(moduleID);
         it->publishedHere = false;
@@ -338,11 +373,15 @@ int64_t SystemMessaging::subscribeToMessage(std::string messageName,
 bool SystemMessaging::obtainWriteRights(int64_t messageID, int64_t moduleID)
 {
     bool rightsObtained = false;
+    MessageStorageContainer *msgPtr;
+    int64_t activeBuff;
+
+    msgPtr = this->findResProcess(moduleID, &activeBuff);
     
-    if(moduleID >= 0 && messageID < this->GetMessageCount())
+    if(moduleID >= 0 && messageID < this->GetMessageCount(activeBuff))
     {
         std::vector<AllowAccessData>::iterator it;
-        it = this->messageStorage->pubData.begin();
+        it = msgPtr->pubData.begin();
         it += messageID;
         it->accessList.insert(moduleID);
         rightsObtained = true;
@@ -361,10 +400,14 @@ bool SystemMessaging::obtainReadRights(int64_t messageID, int64_t moduleID)
 {
  
     bool rightsObtained = false;
+    MessageStorageContainer *msgPtr;
+    int64_t activeBuff;
+
+    msgPtr = this->findResProcess(moduleID, &activeBuff);
     
-    if(moduleID >= 0 && messageID < this->GetMessageCount()) {
+    if(moduleID >= 0 && messageID < this->GetMessageCount(activeBuff)) {
         std::vector<AllowAccessData>::iterator it;
-        it = this->messageStorage->subData.begin();
+        it = msgPtr->subData.begin();
         it += messageID;
         it->accessList.insert(moduleID);
         rightsObtained = true;
@@ -419,8 +462,13 @@ MessageIdentData SystemMessaging::messagePublishSearch(std::string messageName)
 bool SystemMessaging::WriteMessage(int64_t MessageID, uint64_t ClockTimeNanos,
                                    uint64_t MsgSize, void *MsgPayload, int64_t moduleID)
 {
+    MessageStorageContainer *msgPtr;
+    int64_t activeBuff;
+    bool msgWritten;
+
+    msgPtr = this->findResProcess(moduleID, &activeBuff);
     // Check if the message is valid
-    if(MessageID >= this->GetMessageCount())
+    if(MessageID >= this->GetMessageCount(activeBuff))
     {
         BSK_PRINT(MSG_ERROR, "Received a write request for invalid message ID: %" PRId64
                                    " from ModuleID: %" PRId64, MessageID, moduleID);
@@ -428,11 +476,11 @@ bool SystemMessaging::WriteMessage(int64_t MessageID, uint64_t ClockTimeNanos,
         return(false);
     }
     // Check and update the previous publisher. Deny write if requester doesn't have pub access
-    MessageHeaderData* MsgHdr = this->FindMsgHeader(MessageID);
+    MessageHeaderData* MsgHdr = this->FindMsgHeader(MessageID, activeBuff);
     if(MsgHdr->previousPublisher != moduleID)
     {
         std::vector<AllowAccessData>::iterator it;
-        it = this->messageStorage->pubData.begin();
+        it = msgPtr->pubData.begin();
         it += MessageID;
         if(it->accessList.find(moduleID) != it->accessList.end())
         {
@@ -441,24 +489,39 @@ bool SystemMessaging::WriteMessage(int64_t MessageID, uint64_t ClockTimeNanos,
         else
         {
             BSK_PRINT(MSG_ERROR, "Received a write request from module %" PRId64 "that doesn't publish for %s . You get nothing.",
-                            moduleID, this->FindMessageName(MessageID).c_str());
+                            moduleID, this->FindMessageName(MessageID, activeBuff).c_str());
             this->WriteFails++;
             return(false);
         }
     }
+
+    msgWritten = this->writeMessageToBuffer(MessageID, ClockTimeNanos, MsgSize, MsgPayload, activeBuff);
+    return(msgWritten);
+
+}
+
+
+bool SystemMessaging::writeMessageToBuffer(int64_t MessageID, uint64_t ClockTimeNanos, uint64_t MsgSize, void *MsgPayload,
+                                      int64_t bufferSelect) {
+
+    MessageStorageContainer *msgPtr;
+    // Check and update the previous publisher. Deny write if requester doesn't have pub access
+    MessageHeaderData* MsgHdr = this->FindMsgHeader(MessageID, bufferSelect);
+
     // Check the message size
     if(MsgSize != MsgHdr->MaxMessageSize)
     {
-        BSK_PRINT(MSG_ERROR, "Received a write request from module %" PRId64 "that was incorrect size for: %s. ( %" PRIu64 "instead of %" PRIu64 ".) You get nothing.",
-                  moduleID, MsgHdr->MessageName, MsgSize, MsgHdr->MaxMessageSize);
+        BSK_PRINT(MSG_ERROR, "Received a write request that was incorrect size for: %s. ( %" PRIu64 "instead of %" PRIu64 ".) You get nothing.",
+                  MsgHdr->MessageName, MsgSize, MsgHdr->MaxMessageSize);
         this->WriteFails++;
         return(false);
     }
+    msgPtr = this->getProcData(bufferSelect);
     // If you made it this far, write the message and return success
-    uint8_t *WriteDataBuffer = &(this->messageStorage->messageStorage.StorageBuffer[MsgHdr->
-                                                               StartingOffset]);
+    uint8_t *WriteDataBuffer = &(msgPtr->messageStorage.StorageBuffer[MsgHdr->
+            StartingOffset]);
     uint64_t AccessIndex = (MsgHdr->UpdateCounter%MsgHdr->MaxNumberBuffers)*
-    (sizeof(SingleMessageHeader) + MsgHdr->MaxMessageSize);
+                           (sizeof(SingleMessageHeader) + MsgHdr->MaxMessageSize);
     WriteDataBuffer += AccessIndex;
     SingleMessageHeader WriteHeader;
     WriteHeader.WriteClockNanos = ClockTimeNanos;
@@ -471,6 +534,8 @@ bool SystemMessaging::WriteMessage(int64_t MessageID, uint64_t ClockTimeNanos,
     MsgHdr->CurrentReadBuffer = MsgHdr->UpdateCounter%MsgHdr->MaxNumberBuffers;
     MsgHdr->UpdateCounter++;
     return(true);
+
+    return false;
 }
 
 /*! This method is static and is added so that other classes (ex. messageLogger)
@@ -510,18 +575,57 @@ void SystemMessaging::AccessMessageData(uint8_t *MsgBuffer, uint64_t maxMsgBytes
 bool SystemMessaging::ReadMessage(int64_t MessageID, SingleMessageHeader
                                   *DataHeader, uint64_t MaxBytes, void *MsgPayload, int64_t moduleID, uint64_t CurrentOffset)
 {
-    if(MessageID >= this->GetMessageCount())
+
+    MessageStorageContainer *msgPtr;
+    int64_t activeBuff;
+    bool newMsg;
+
+
+    msgPtr = this->findResProcess(moduleID, &activeBuff);
+    MessageHeaderData* MsgHdr = this->FindMsgHeader(MessageID, activeBuff);
+    if(MessageID >= this->GetMessageCount(activeBuff))
     {
         BSK_PRINT(MSG_ERROR, "Received a read request for invalid message ID.  Value: %" PRId64 " is larger than number of available messages.", MessageID);
         this->ReadFails++;
         return(false);
     }
 
-    //  Zero out the message header and payload in case of a bad read
+    if(MsgHdr->UpdateCounter == 0)
+    {
+        return(false);
+    }
+
+    std::vector<MessageExchangeData>::iterator exIt;
+    std::vector<AllowAccessData>::iterator accIt;
+    accIt = msgPtr->subData.begin();
+    exIt = msgPtr->exchangeData.begin();
+    accIt += MessageID;
+    exIt += MessageID;
+    if(accIt->accessList.find(moduleID) == accIt->accessList.end()
+       && moduleID != -1)
+    {
+        BSK_PRINT(MSG_WARNING, "Message %s was read by module ID %" PRId64 " who is not on access list.", MsgHdr->MessageName, moduleID);
+    }
+
+    exIt->exchangeList.insert(std::pair<long int, long int>
+                                      (MsgHdr->previousPublisher, moduleID));
+
+    newMsg = this->readMessageFromBuffer(MessageID, DataHeader, MaxBytes, MsgPayload, activeBuff, CurrentOffset);
+    return(newMsg);
+
+
+}
+
+bool SystemMessaging::readMessageFromBuffer(int64_t MessageID, SingleMessageHeader *DataHeader, uint64_t MaxBytes,
+                                            void *MsgPayload, int64_t bufferSelect, uint64_t CurrentOffset) {
+
+
+    MessageStorageContainer* msgPtr = this->getProcData(bufferSelect);
+
     memset(DataHeader, 0x0, sizeof(SingleMessageHeader));
     memset(MsgPayload, 0x0, MaxBytes);
 
-    MessageHeaderData* MsgHdr = this->FindMsgHeader(MessageID);
+    MessageHeaderData* MsgHdr = this->FindMsgHeader(MessageID, bufferSelect);
     /// - If there is no data just alert caller that nothing came back
     if(MsgHdr->UpdateCounter == 0)
     {
@@ -534,27 +638,13 @@ bool SystemMessaging::ReadMessage(int64_t MessageID, SingleMessageHeader
     {
         CurrentIndex += MsgHdr->MaxNumberBuffers;
     }
-    std::vector<MessageExchangeData>::iterator exIt;
-    std::vector<AllowAccessData>::iterator accIt;
-    accIt = this->messageStorage->subData.begin();
-    exIt = this->messageStorage->exchangeData.begin();
-    accIt += MessageID;
-    exIt += MessageID;
-    if(accIt->accessList.find(moduleID) == accIt->accessList.end()
-        && moduleID != -1)
-    {
-        BSK_PRINT(MSG_WARNING, "Message %s was read by module ID %" PRId64 " who is not on access list.", MsgHdr->MessageName, moduleID);
-    }
 
-    exIt->exchangeList.insert(std::pair<long int, long int>
-        (MsgHdr->previousPublisher, moduleID));
-    
-    uint8_t *ReadBuffer = &(this->messageStorage->messageStorage.
-                            StorageBuffer[MsgHdr->StartingOffset]);
+    uint8_t *ReadBuffer = &(msgPtr->messageStorage.
+            StorageBuffer[MsgHdr->StartingOffset]);
     uint64_t MaxOutputBytes = MaxBytes < MsgHdr->MaxMessageSize ? MaxBytes :
-    MsgHdr->MaxMessageSize;
+                              MsgHdr->MaxMessageSize;
     this->AccessMessageData(ReadBuffer, MsgHdr->MaxMessageSize, (uint64_t) CurrentIndex,
-                      DataHeader, MaxOutputBytes, reinterpret_cast<uint8_t*>(MsgPayload));
+                            DataHeader, MaxOutputBytes, reinterpret_cast<uint8_t*>(MsgPayload));
     return(true);
 }
 
@@ -562,13 +652,13 @@ bool SystemMessaging::ReadMessage(int64_t MessageID, SingleMessageHeader
  * This method prints all message data from the current buffer
  * @return void
  */
-void SystemMessaging::PrintAllMessageData()
+void SystemMessaging::PrintAllMessageData(int64_t buffSelect)
 {
-    int64_t TotalMessageCount = this->GetMessageCount();
+    int64_t TotalMessageCount = this->GetMessageCount(buffSelect);
     BSK_PRINT(MSG_INFORMATION, "Number of Messages: %" PRId64, TotalMessageCount);
     for(int64_t i=0; i<TotalMessageCount; i++)
     {
-        this->PrintMessageStats(i);
+        this->PrintMessageStats(i, buffSelect);
     }
 }
 
@@ -585,14 +675,15 @@ MessageHeaderData* SystemMessaging::FindMsgHeader(int64_t MessageID, int32_t buf
     {
         return NULL;
     }
-    MessageStorageContainer *localStorage = this->messageStorage;
-    if(bufferSelect >= 0)
-    {
-        std::vector<MessageStorageContainer *>::iterator it;
-        it = this->dataBuffers.begin();
-        it += bufferSelect;
-        localStorage = *it;
+    MessageStorageContainer *localStorage = nullptr;
+    if(bufferSelect < 0) {
+        bufferSelect = 0;
     }
+    std::vector<MessageStorageContainer *>::iterator it;
+    it = this->dataBuffers.begin();
+    it += bufferSelect;
+    localStorage = *it;
+
     MsgHdr = reinterpret_cast<MessageHeaderData*> (&(localStorage->messageStorage.
                                                      StorageBuffer[sizeof(uint64_t)]));
     MsgHdr += MessageID;
@@ -604,9 +695,9 @@ MessageHeaderData* SystemMessaging::FindMsgHeader(int64_t MessageID, int32_t buf
  * @param int64_t MessageID The message to query
  * @return void
  */
-void SystemMessaging::PrintMessageStats(int64_t MessageID)
+void SystemMessaging::PrintMessageStats(int64_t MessageID, int64_t buffSelect)
 {
-    MessageHeaderData* MsgHdr = this->FindMsgHeader(MessageID);
+    MessageHeaderData* MsgHdr = this->FindMsgHeader(MessageID, buffSelect);
     if(MsgHdr == NULL)
     {
         BSK_PRINT(MSG_ERROR, "Received a print request for ID: %" PRId64 " That ID is not valid.", MessageID);
@@ -685,17 +776,19 @@ int64_t SystemMessaging::findMessageBuffer(std::string bufferName)
  * This method returns a list of messages that no one has access to.
  * @return std::set<std::string> unpublishedList The list of message names that are unpublished.
  */
-std::set<std::string> SystemMessaging::getUnpublishedMessages()
+std::set<std::string> SystemMessaging::getUnpublishedMessages(int64_t buffSelect)
 {
     std::set<std::string> unpublishedList;
     std::vector<AllowAccessData>::iterator it;
-    for(it=this->messageStorage->pubData.begin(); it!=this->messageStorage->pubData.end();
+    MessageStorageContainer* msgPtr;
+    msgPtr = this->getProcData(buffSelect);
+    for(it=msgPtr->pubData.begin(); it!=msgPtr->pubData.end();
         it++)
     {
         if(it->accessList.size() <= 0)
         {
             std::string unknownPub = SystemMessaging::GetInstance()->
-                    FindMessageName(it - this->messageStorage->pubData.begin());
+                    FindMessageName(it - msgPtr->pubData.begin(), buffSelect);
             unpublishedList.insert(unknownPub);
         }
     }
@@ -727,10 +820,13 @@ std::set<std::string> SystemMessaging::getUniqueMessageNames()
  * @return std::set<std::pair<long int, long int>> exchangeList
  */
 std::set<std::pair<long int, long int>>
-    SystemMessaging::getMessageExchangeData(int64_t messageID)
+    SystemMessaging::getMessageExchangeData(int64_t messageID, int64_t buffSelect)
 {
     std::vector<MessageExchangeData>::iterator it;
-    it = this->messageStorage->exchangeData.begin();
+    MessageStorageContainer* msgPtr;
+
+    msgPtr = this->getProcData(buffSelect);
+    it = msgPtr->exchangeData.begin();
     it += messageID;
     return(it->exchangeList);
 }
@@ -760,9 +856,27 @@ MessageStorageContainer *SystemMessaging::getProcData(int64_t buffSelect) {
     if(buffSelect >= this->dataBuffers.size())
     {
         BSK_PRINT(MSG_ERROR,"You've attempted to access a message buffer that does not exist. Yikes.");
-        this->messageStorage = *this->dataBuffers.begin();
         return nullptr;
     }
     it += buffSelect;
     return (*it);
+}
+
+MessageStorageContainer *SystemMessaging::findResProcess(int64_t moduleID, int64_t *buffSel) {
+
+    std::vector<MessageStorageContainer*>::iterator it;
+    MessageStorageContainer *msgPtr;
+    msgPtr = *(this->dataBuffers.begin()); //Default to an actual buffer if none found
+    *buffSel = 0;
+    for(it=this->dataBuffers.begin(); it!= dataBuffers.end(); it++)
+    {
+        if((*it)->moduleIDs.find(moduleID) != (*it)->moduleIDs.end())
+        {
+            msgPtr = *it;
+            *buffSel = it - dataBuffers.begin();
+            break;
+        }
+    }
+
+    return msgPtr;
 }

@@ -75,6 +75,7 @@ void Spacecraft::addDockingPort(DockingData *newDockingPort)
 
 void Spacecraft::SelfInitSC(int64_t moduleID)
 {
+    this->gravField.moduleID = moduleID;
     this->scStateOutMsgName = this->spacecraftName + "_" + this->scStateOutMsgName;
     this->scMassStateOutMsgName = this->spacecraftName + "_" + this->scMassStateOutMsgName;
     this->scEnergyMomentumOutMsgName = this->spacecraftName + "_" + this->scEnergyMomentumOutMsgName;

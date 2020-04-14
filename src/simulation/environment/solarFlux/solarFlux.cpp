@@ -117,5 +117,5 @@ void SolarFlux::readMessages() {
 void SolarFlux::writeMessages(uint64_t CurrentSimNanos) {
     SolarFluxSimMsg fluxMsgOutData = {this->fluxAtSpacecraft};
     SystemMessaging::GetInstance()->WriteMessage(this->solarFluxOutMsgId, CurrentSimNanos, sizeof(SolarFluxSimMsg),
-                                  reinterpret_cast<uint8_t*>(&fluxMsgOutData));
+                                  reinterpret_cast<uint8_t*>(&fluxMsgOutData), this->moduleID);
 }

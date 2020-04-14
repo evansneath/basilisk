@@ -54,8 +54,6 @@ public:
     void enableProcess() {this->processActive = true;}
     void disableProcess() {this->processActive = false;}
     void scheduleTask(ModelScheduleEntry & taskCall);
-    void selectProcess()
-    {SystemMessaging::GetInstance()->selectMessageBuffer(this->messageBuffer);}
     void setProcessName(std::string newName){this->processName = newName;}
     std::string getProcessName() { return(processName);}
     uint64_t getNextTime() { return(this->nextTaskTime);}

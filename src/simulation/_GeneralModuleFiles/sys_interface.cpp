@@ -78,12 +78,10 @@ void InterfaceDataExchange::discoverMessages()
 {
     std::set<std::string> unknownPublisher;
     std::set<std::string>::iterator it;
-    SystemMessaging::GetInstance()->selectMessageBuffer(this->processData.destination);
-    unknownPublisher = SystemMessaging::GetInstance()->getUnpublishedMessages();
-    SystemMessaging::GetInstance()->selectMessageBuffer(this->processData.source);
+    unknownPublisher = SystemMessaging::GetInstance()->getUnpublishedMessages(this->processData.destination);
     for(it=unknownPublisher.begin(); it!=unknownPublisher.end(); it++)
     {
-        int64_t messageID = SystemMessaging::GetInstance()->FindMessageID(*it);
+        int64_t messageID = SystemMessaging::GetInstance()->FindMessageID(*it, this->processData.source);
         if(messageID >= 0)
         {
             MessageInterfaceMatch newMessage;
@@ -109,19 +107,15 @@ bool InterfaceDataExchange::linkMessages()
     std::vector<MessageInterfaceMatch>::iterator it;
     for(it=this->messageTraffic.begin(); it != this->messageTraffic.end(); it++)
     {
-        SystemMessaging::GetInstance()->
-            selectMessageBuffer(this->processData.destination);
         it->destination = SystemMessaging::GetInstance()->
-            FindMessageID(it->messageSource);
+            FindMessageID(it->messageSource, this->processData.destination);
         if(it->destination >= 0)
         {
             SystemMessaging::GetInstance()->obtainWriteRights(it->destination,
                                                               this->moduleID);
         }
-        SystemMessaging::GetInstance()->
-        selectMessageBuffer(this->processData.source);
         it->source = SystemMessaging::GetInstance()->
-        FindMessageID(it->messageSource);
+        FindMessageID(it->messageSource, this->processData.source);
         if(it->source >= 0)
         {
             SystemMessaging::GetInstance()->obtainReadRights(it->source,
@@ -145,10 +139,8 @@ void InterfaceDataExchange::routeMessages()
     std::vector<MessageInterfaceMatch>::iterator it;
     for(it=this->messageTraffic.begin(); it!=this->messageTraffic.end(); it++)
     {
-        SystemMessaging::GetInstance()->
-        selectMessageBuffer(processData.source);
         MessageHeaderData* localHdr = SystemMessaging::GetInstance()->
-            FindMsgHeader(it->source);
+            FindMsgHeader(it->source, processData.source);
         if(localHdr->MaxMessageSize > this->msgBufferSize)
         {
             if(this->msgBuffer != NULL)
@@ -166,8 +158,6 @@ void InterfaceDataExchange::routeMessages()
         }
         SystemMessaging::GetInstance()->ReadMessage(it->source, &dataHeader,
             localHdr->MaxMessageSize, msgBuffer, moduleID);
-        SystemMessaging::GetInstance()->
-        selectMessageBuffer(this->processData.destination);
         SystemMessaging::GetInstance()->WriteMessage(it->destination,
             dataHeader.WriteClockNanos, dataHeader.WriteSize, this->msgBuffer, this->moduleID);
         it->updateCounter = localHdr->UpdateCounter;

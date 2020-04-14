@@ -109,41 +109,47 @@ class SystemMessaging
 public:
     static SystemMessaging* GetInstance();  //! -- returns a pointer to the sim instance of SystemMessaging
     int64_t AttachStorageBucket(std::string bufferName = "");  //! -- adds a new buffer to the messaging system
-    void SetNumMessages(int64_t MessageCount);  //! --updates message count in buffer header
-    int64_t GetMessageCount(int32_t bufferSelect = -1);  //! --gets the number of messages in buffer bufferSelect
-    void ClearMessageBuffer();  //! -- sets current buffer to zeros
-    uint64_t GetCurrentSize();  //! -- returns size of current buffer
+    void SetNumMessages(int64_t buffSelect, int64_t MessageCount);  //! --updates message count in buffer header
+    int64_t GetMessageCount(int64_t bufferSelect);  //! --gets the number of messages in buffer bufferSelect
+    void ClearMessageBuffer(int64_t buffSelect);  //! -- sets current buffer to zeros
+    uint64_t GetCurrentSize(int64_t buffSelect);  //! -- returns size of current buffer
     int64_t CreateNewMessage(std::string MessageName, uint64_t MaxSize,
         uint64_t NumMessageBuffers = 2, std::string messageStruct = "", int64_t moduleID = -1);
+    int64_t createMessageInBuffer(std::string MessageName, uint64_t MaxSize,
+                             uint64_t NumMessageBuffers, std::string messageStruct, int64_t bufferSelect);
     bool WriteMessage(int64_t MessageID, uint64_t ClockTimeNanos, uint64_t MsgSize,
-                      void *MsgPayload, int64_t moduleID = -1);
+                      void *MsgPayload, int64_t moduleID);
+    bool writeMessageToBuffer(int64_t MessageID, uint64_t ClockTimeNanos, uint64_t MsgSize,
+                      void *MsgPayload, int64_t bufferSelect);
     bool ReadMessage(int64_t MessageID, SingleMessageHeader *DataHeader,
-                     uint64_t MaxBytes, void *MsgPayload, int64_t moduleID=-1, uint64_t CurrentOffset=0);
+                     uint64_t MaxBytes, void *MsgPayload, int64_t moduleID, uint64_t CurrentOffset=0);
+    bool readMessageFromBuffer(int64_t MessageID, SingleMessageHeader *DataHeader,
+                     uint64_t MaxBytes, void *MsgPayload, int64_t bufferSelect, uint64_t CurrentOffset=0);
     static void AccessMessageData(uint8_t *MsgBuffer, uint64_t maxMsgBytes,
                                   uint64_t CurrentOffset, SingleMessageHeader *DataHeader,
                                   uint64_t maxReadBytes, uint8_t *OutputBuffer);
-    MessageHeaderData* FindMsgHeader(int64_t MessageID, int32_t bufferSelect=-1);  //! -- returns a MessageHeaderData
-    void PrintAllMessageData();  //! -- prints data for messages in current buffer
-    void PrintMessageStats(int64_t MessageID);  //! -- prints data for a single message by ID
-    std::string FindMessageName(int64_t MessageID, int32_t bufferSelect=-1);  //! -- searches only the selected buffer
-    int64_t FindMessageID(std::string MessageName, int32_t bufferSelect=-1);  //! -- searches only the selected buffer
+    MessageHeaderData* FindMsgHeader(int64_t MessageID, int32_t bufferSelect);  //! -- returns a MessageHeaderData
+    void PrintAllMessageData(int64_t buffSelect);  //! -- prints data for messages in current buffer
+    void PrintMessageStats(int64_t MessageID, int64_t buffSelect);  //! -- prints data for a single message by ID
+    std::string FindMessageName(int64_t MessageID, int32_t bufferSelect);  //! -- searches only the selected buffer
+    int64_t FindMessageID(std::string MessageName, int32_t bufferSelect);  //! -- searches only the selected buffer
     int64_t subscribeToMessage(std::string messageName, uint64_t messageSize,
         int64_t moduleID);
     int64_t checkoutModuleID();  //! -- Assigns next integer module ID
-    void selectMessageBuffer(int64_t bufferUse);  //! -- sets a default buffer for everything to use
     uint64_t getProcessCount() {return(this->dataBuffers.size());}
     MessageIdentData messagePublishSearch(std::string messageName);  //! -- returns MessageIdentData if found
     int64_t findMessageBuffer(std::string bufferName);
-    std::set<std::string> getUnpublishedMessages();  //! -- returns msgs no one has access rights to
+    std::set<std::string> getUnpublishedMessages(int64_t buffSelect);  //! -- returns msgs no one has access rights to
     std::set<std::string> getUniqueMessageNames();  //! -- searched across all buffers
     std::set<std::pair<long int, long int>>
-        getMessageExchangeData(int64_t messageID);
+        getMessageExchangeData(int64_t messageID, int64_t buffSelect);
     void clearMessaging();  //! -- wipes out all messages and buffers. total messaging system reset.
     bool obtainWriteRights(int64_t messageID, int64_t moduleID);  //! -- grants rights to the requesting module
     bool obtainReadRights(int64_t messageID, int64_t moduleID);  //! -- grants rights to the requesting module
     uint64_t getFailureCount() {return (this->CreateFails + this->ReadFails + this->WriteFails);}
     void addModuleToProcess(int64_t moduleID, std::string procName);
     MessageStorageContainer* getProcData(int64_t buffSelect);
+    MessageStorageContainer* findResProcess(int64_t moduleID, int64_t *buffSel);
 
 private:
     SystemMessaging();
@@ -154,7 +160,6 @@ private:
 private:
     static SystemMessaging *TheInstance;
     std::vector<MessageStorageContainer *> dataBuffers;
-    MessageStorageContainer *messageStorage; // this is a pointer to the currently selected message buffer above
     uint64_t WriteFails;  //! the number of times we tried to write invalidly
     uint64_t ReadFails;  //! the number of times we tried to read invalidly
     uint64_t CreateFails;  //! the number of times we tried to create invalidly

@@ -121,9 +121,8 @@ void messageLogger::logAllMessages()
             continue;
         }
         //! - Get the current message header and check to see if it is new and if enough time has elapsed since the last log
-        SystemMessaging::GetInstance()->selectMessageBuffer(it->processID);
         MessageHeaderData* localHeader = SystemMessaging::GetInstance()->
-        FindMsgHeader(it->messageID);
+        FindMsgHeader(it->messageID, it->processID);
         bool bufferNew = it->lastWriteCheck != localHeader->UpdateCounter;
         bufferNew = bufferNew ? (localHeader->CurrentReadTime - it->lastLogTime)
         >= it->writeDelta || it->lastWriteCheck == 0 : bufferNew;
@@ -140,9 +139,10 @@ void messageLogger::logAllMessages()
             //! - Read out current message and reset log parameter so that we grab the appropriate message next time
             uint8_t * localPtr =
             &(it->messageBuffer.StorageBuffer[it->bufferOffset]);
-            SystemMessaging::GetInstance()->ReadMessage(it->messageID,
+            SystemMessaging::GetInstance()->readMessageFromBuffer(it->messageID,
                                                         reinterpret_cast<SingleMessageHeader *> (localPtr),
-                                                        localHeader->CurrentReadSize, &localPtr[sizeof(SingleMessageHeader)]);
+                                                        localHeader->CurrentReadSize, &localPtr[sizeof(SingleMessageHeader)],
+                                                        it->processID);
             it->storOff.push_back(it->bufferOffset);
             it->bufferOffset += sizeof(SingleMessageHeader) +
             localHeader->CurrentReadSize;

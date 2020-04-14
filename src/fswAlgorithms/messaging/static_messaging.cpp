@@ -105,5 +105,6 @@ int32_t subscribeToMessage(char *MessageName, uint64_t messageSize,
  */
 const char * FindMessageName(int64_t MessageID)
 {
-    return(SystemMessaging::GetInstance()->FindMessageName(MessageID).c_str());
+    //return(SystemMessaging::GetInstance()->FindMessageName(MessageID).c_str());
+    return("NULL");
 }

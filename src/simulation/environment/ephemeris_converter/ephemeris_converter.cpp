@@ -40,11 +40,14 @@ bool EphemerisConverter::LinkMessages()
     bool messagesFound = true;
     std::map<std::string, std::string>::iterator it;
     std::map<int64_t, IDEphemerisSimMsg>::iterator mapIt;
+    int64_t buffSelect;
+
     for(it=messageNameMap.begin(); it!= messageNameMap.end(); it++)
     {
         sourceID = SystemMessaging::GetInstance()->subscribeToMessage(it->first,
             sizeof(SpicePlanetStateSimMsg), moduleID);
-        destID = SystemMessaging::GetInstance()->FindMessageID(it->second);
+        SystemMessaging::GetInstance()->findResProcess(moduleID, &buffSelect);
+        destID = SystemMessaging::GetInstance()->FindMessageID(it->second, buffSelect);
         messagesFound &= (sourceID >= 0 && destID >= 0);
         mapIt = messageIDMap.find(destID);
         mapIt->second.inputID = sourceID;
@@ -107,7 +110,7 @@ void EphemerisConverter::readInputMessages()
     {
         SystemMessaging::GetInstance()->ReadMessage(it->second.inputID,
             &localHeader, sizeof(SpicePlanetStateSimMsg),
-            (uint8_t *) (&(it->second.messageData)));
+            (uint8_t *) (&(it->second.messageData)), this->moduleID);
         it->second.clockTime = localHeader.WriteClockNanos;
     }
     
@@ -121,7 +124,7 @@ void EphemerisConverter::writeOutputMessages(uint64_t CurrentSimNanos)
     {
         SystemMessaging::GetInstance()->WriteMessage(it->first,
             CurrentSimNanos, sizeof(EphemerisIntMsg),
-            reinterpret_cast<uint8_t *>(&it->second.outputData));
+            reinterpret_cast<uint8_t *>(&it->second.outputData), this->moduleID);
     }
     
 

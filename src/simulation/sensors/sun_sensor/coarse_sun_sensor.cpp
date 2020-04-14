@@ -363,6 +363,7 @@ void CSSConstellation::SelfInit()
     //! - Loop over the sensor list and initialize all children
     for(it=this->sensorList.begin(); it!= this->sensorList.end(); it++)
     {
+        it->moduleID = this->moduleID; //All children are part of same process
         it->SelfInit();
     }
     
@@ -403,7 +404,8 @@ void CSSConstellation::UpdateState(uint64_t CurrentSimNanos)
     }
     SystemMessaging::GetInstance()->WriteMessage(outputConstID, CurrentSimNanos,
                                                  sizeof(CSSArraySensorIntMsg),
-                                                 reinterpret_cast<uint8_t *>(&outputBuffer));
+                                                 reinterpret_cast<uint8_t *>(&outputBuffer),
+                                                 moduleID);
 }
 
 void CSSConstellation::appendCSS(CoarseSunSensor newSensor) {

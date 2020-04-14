@@ -115,7 +115,7 @@ void RadiationPressure::readInputMessages()
     if(this->sunEphmInMsgId >= 0)
     {
         memset(&this->sunEphmInBuffer, 0x0, sizeof(SpicePlanetStateSimMsg));
-        succesfulRead = SystemMessaging::GetInstance()->ReadMessage(this->sunEphmInMsgId, &localHeader, sizeof(SpicePlanetStateSimMsg), reinterpret_cast<uint8_t*> (&this->sunEphmInBuffer));
+        succesfulRead = SystemMessaging::GetInstance()->ReadMessage(this->sunEphmInMsgId, &localHeader, sizeof(SpicePlanetStateSimMsg), reinterpret_cast<uint8_t*> (&this->sunEphmInBuffer), this->moduleID);
     }
     
     memset(&localHeader, 0x0, sizeof(localHeader));
@@ -123,7 +123,7 @@ void RadiationPressure::readInputMessages()
     if(this->stateInMsgId >= 0)
     {
         memset(&this->stateInBuffer, 0x0, sizeof(SCPlusStatesSimMsg));
-        this->stateRead = SystemMessaging::GetInstance()->ReadMessage(this->stateInMsgId, &localHeader, sizeof(SCPlusStatesSimMsg), reinterpret_cast<uint8_t*> (&this->stateInBuffer));
+        this->stateRead = SystemMessaging::GetInstance()->ReadMessage(this->stateInMsgId, &localHeader, sizeof(SCPlusStatesSimMsg), reinterpret_cast<uint8_t*> (&this->stateInBuffer), this->moduleID);
     }
 
     memset(&localHeader, 0x0, sizeof(localHeader));

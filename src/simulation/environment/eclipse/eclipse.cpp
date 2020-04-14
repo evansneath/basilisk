@@ -95,7 +95,7 @@ void Eclipse::readInputMessages()
     }
     
     memset(&tmpHeader, 0x0, sizeof(tmpHeader));
-    messageSys->ReadMessage(this->sunInMsgId, &tmpHeader, sizeof(SpicePlanetStateSimMsg), reinterpret_cast<uint8_t*>(&this->sunInMsgState));
+    messageSys->ReadMessage(this->sunInMsgId, &tmpHeader, sizeof(SpicePlanetStateSimMsg), reinterpret_cast<uint8_t*>(&this->sunInMsgState), this->moduleID);
     
     //! - Iterate through all of the spice planet Msgs
     memset(&tmpHeader, 0x0, sizeof(tmpHeader));

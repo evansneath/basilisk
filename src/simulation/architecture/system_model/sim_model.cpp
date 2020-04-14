@@ -40,7 +40,7 @@ SimModel::~SimModel()
  @return void*/
 void SimModel::PrintSimulatedMessageData()
 {
-    SystemMessaging::GetInstance()->PrintAllMessageData();
+    //SystemMessaging::GetInstance()->PrintAllMessageData();
 }
 
 /*! This method exists to provide a hook into the messaging system for obtaining
@@ -92,9 +92,7 @@ uint64_t SimModel::GetWriteData(std::string MessageName, uint64_t MaxSize,
     switch(logType)
     {
         case messageBuffer:
-            SystemMessaging::GetInstance()->
-                selectMessageBuffer(MessageID.processBuffer);
-            SystemMessaging::GetInstance()->ReadMessage(MessageID.itemID, &DataHeader, MaxSize, reinterpret_cast<uint8_t*> (MessageData), -1, LatestOffset);
+            SystemMessaging::GetInstance()->readMessageFromBuffer(MessageID.itemID, &DataHeader, MaxSize, reinterpret_cast<uint8_t*> (MessageData), MessageID.processBuffer, LatestOffset);
             break;
         case logBuffer:
             this->messageLogs.readLog(MessageID, &DataHeader,
@@ -289,9 +287,8 @@ void SimModel::CreateNewMessage(std::string processName, std::string MessageName
 
     if(processID >= 0)
     {
-        SystemMessaging::GetInstance()->selectMessageBuffer(processID);
-        SystemMessaging::GetInstance()->CreateNewMessage(MessageName, MessageSize,
-                                                     NumBuffers, messageStruct);
+        SystemMessaging::GetInstance()->createMessageInBuffer(MessageName, MessageSize,
+                                                     NumBuffers, messageStruct, processID);
     }
     else
     {
@@ -323,9 +320,9 @@ void SimModel::WriteMessageData(std::string MessageName, uint64_t MessageSize,
                 MessageName.c_str());
         return;
     }
-    SystemMessaging::GetInstance()->selectMessageBuffer(MessageID.processBuffer);
-    SystemMessaging::GetInstance()->WriteMessage(MessageID.itemID, ClockTime,
-                                                 MessageSize, reinterpret_cast<uint8_t*> (MessageData));
+
+    SystemMessaging::GetInstance()->writeMessageToBuffer(MessageID.itemID, ClockTime,
+                                                 MessageSize, reinterpret_cast<uint8_t*> (MessageData), MessageID.processBuffer);
 }
 /*! This method functions as a pass-through to the message logging structure
  when adding messages to log.  The main point is to serve as an API at the
@@ -345,16 +342,16 @@ void SimModel::logThisMessage(std::string messageName, uint64_t messagePeriod)
     @return uint64_t The number of messages that have been created
 */
 int64_t SimModel::getNumMessages() {
-    return(SystemMessaging::GetInstance()->GetMessageCount());
+    return(SystemMessaging::GetInstance()->GetMessageCount(0));
 }
 /*! This method finds the name associated with the message ID that is passed
     in.
     @return std::string messageName The message name for the ID
     @param uint64_t messageID The message id that we wish to find the name for
 */
-std::string SimModel::getMessageName(int64_t messageID)
+std::string SimModel::getMessageName(int64_t messageID, int64_t buffSelect)
 {
-    return(SystemMessaging::GetInstance()->FindMessageName(messageID));
+    return(SystemMessaging::GetInstance()->FindMessageName(messageID, buffSelect));
 }
 
 /*! This method obtains the header information associated with a given message.
@@ -371,9 +368,8 @@ void SimModel::populateMessageHeader(std::string messageName,
 {
     MessageIdentData messageID = SystemMessaging::GetInstance()->
         messagePublishSearch(messageName);
-    SystemMessaging::GetInstance()->selectMessageBuffer(messageID.processBuffer);
     MessageHeaderData *locHeader = SystemMessaging::GetInstance()->
-        FindMsgHeader(messageID.itemID);
+        FindMsgHeader(messageID.itemID, messageID.processBuffer);
     memcpy(headerOut, locHeader, sizeof(MessageHeaderData));
 }
 
@@ -428,15 +424,13 @@ std::set<std::pair<long int, long int>> SimModel::getMessageExchangeData(std::st
         {
             continue;
         }
-        SystemMessaging::GetInstance()->
-            selectMessageBuffer(i);
         int64_t messageID = SystemMessaging::GetInstance()->
-            FindMessageID(messageName);
+            FindMessageID(messageName, i);
         if(messageID >= 0)
         {
             std::set<std::pair<long int, long int>> localPairs;
             localPairs = SystemMessaging::GetInstance()->
-                getMessageExchangeData(messageID);
+                getMessageExchangeData(messageID, i);
             returnPairs.insert(localPairs.begin(), localPairs.end());
             messageFound = true;
         }
