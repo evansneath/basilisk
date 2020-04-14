@@ -228,22 +228,6 @@ int64_t SystemMessaging::CreateNewMessage(std::string MessageName,
         }
     	return(this->FindMessageID(MessageName, activeBuff));
     }
-    if(MessageName == "")
-    {
-        BSK_PRINT(MSG_ERROR,"Module ID: %" PRId64 " tried to create a message of type: %s without a name.  Please try again.", moduleID, messageStruct.c_str());
-        this->CreateFails++;
-        return(-1);
-    }
-    if(NumMessageBuffers <= 0)
-    {
-        BSK_PRINT(MSG_ERROR,"I can't create a message with zero buffers.  I refuse.");
-        this->CreateFails++;
-        return(-1);
-    }
-    if(NumMessageBuffers == 1)
-    {
-        BSK_PRINT(MSG_WARNING,"You created a message with only one buffer. This might compromise the message integrity. Watch out.");
-    }
 
     messageIDOut = this->createMessageInBuffer(MessageName, MaxSize, NumMessageBuffers, messageStruct, activeBuff);
 
@@ -264,6 +248,23 @@ int64_t SystemMessaging::createMessageInBuffer(std::string MessageName, uint64_t
                                                std::string messageStruct, int64_t bufferSelect) {
 
     MessageStorageContainer *msgPtr;
+
+    if(MessageName == "")
+    {
+        BSK_PRINT(MSG_ERROR,"Buffer ID: %" PRId64 " tried to create a message of type: %s without a name.  Please try again.", bufferSelect, messageStruct.c_str());
+        this->CreateFails++;
+        return(-1);
+    }
+    if(NumMessageBuffers <= 0)
+    {
+        BSK_PRINT(MSG_ERROR,"I can't create a message with zero buffers.  I refuse.");
+        this->CreateFails++;
+        return(-1);
+    }
+    if(NumMessageBuffers == 1)
+    {
+        BSK_PRINT(MSG_WARNING,"You created a message with only one buffer. This might compromise the message integrity. Watch out.");
+    }
 
     msgPtr = this->getProcData(bufferSelect);
 
@@ -351,8 +352,8 @@ int64_t SystemMessaging::subscribeToMessage(std::string messageName,
     messageID = this->FindMessageID(messageName, activeBuff);
     if(messageID < 0)
     {
-        messageID = this->CreateNewMessage(messageName, messageSize, 2,
-                "", moduleID);
+        messageID = this->createMessageInBuffer(messageName, messageSize, 2,
+                "", activeBuff);
     }
     if(moduleID >= 0 && messageID >= 0)
     {

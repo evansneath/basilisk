@@ -64,6 +64,8 @@ public:
     std::vector<MessageInterfaceMatch> messageTraffic;  //!< Message movement
     bool needDelete;  //!< Used by destructor to clear memory for this exchange
     BSKLogger bskLogger;                      //!< -- BSK Logging
+    int64_t readModuleID; //! -- Module ID to use for reading from source
+    int64_t writeModuleID; //! -- Module ID used for writing to destination
 private:
     uint64_t msgBufferSize;  //!< size of message in bytes currently being routed
     uint8_t *msgBuffer;

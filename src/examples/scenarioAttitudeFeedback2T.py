@@ -330,6 +330,7 @@ def run(show_plots, useUnmodeledTorque, useIntGain):
     # Next, after the simulation has been initialized and the modules messages are created
     # a discover process must be called that links messages that have the same name.  This is
     # achieved through the combined initialization and message discovery macro.
+    print("Well here's something")
     scSim.InitializeSimulationAndDiscover()
 
     # this next call ensures that the FSW and Dynamics Message that have the same

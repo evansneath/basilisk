@@ -40,7 +40,12 @@ SimModel::~SimModel()
  @return void*/
 void SimModel::PrintSimulatedMessageData()
 {
-    //SystemMessaging::GetInstance()->PrintAllMessageData();
+    std::vector<SysProcess *>::iterator it;
+    for(it = this->processList.begin(); it != this->processList.end(); it++)
+    {
+        BSK_PRINT(MSG_INFORMATION, "Process data: %s", (*it)->processName.c_str());
+        SystemMessaging::GetInstance()->PrintAllMessageData(it - this->processList.begin());
+    }
 }
 
 /*! This method exists to provide a hook into the messaging system for obtaining

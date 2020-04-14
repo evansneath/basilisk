@@ -36,6 +36,8 @@ InterfaceDataExchange::InterfaceDataExchange()
     this->msgBufferSize = 0;
     this->msgBuffer = NULL;
     this->needDelete = false;
+    this->readModuleID = SystemMessaging::GetInstance()->checkoutModuleID();
+    this->writeModuleID = SystemMessaging::GetInstance()->checkoutModuleID();
 }
 
 /*!
@@ -54,6 +56,7 @@ bool InterfaceDataExchange::linkProcesses()
     bool buffersFound = true;
     this->processData.destination = SystemMessaging::GetInstance()->
     findMessageBuffer(this->processData.messageDest);
+    SystemMessaging::GetInstance()->addModuleToProcess(this->writeModuleID, this->processData.messageDest);
     if(this->processData.destination < 0)
     {
         bskLogger.bskLog(BSK_ERROR, "Failed to find a messaging buffer with name: "
@@ -62,6 +65,7 @@ bool InterfaceDataExchange::linkProcesses()
     }
     this->processData.source = SystemMessaging::GetInstance()->
     findMessageBuffer(this->processData.messageSource);
+    SystemMessaging::GetInstance()->addModuleToProcess(this->readModuleID, this->processData.messageSource);
     if(this->processData.source < 0)
     {
         bskLogger.bskLog(BSK_ERROR, "Failed to find a messaging buffer with name: %s", this->processData.messageSource.c_str());
@@ -112,14 +116,14 @@ bool InterfaceDataExchange::linkMessages()
         if(it->destination >= 0)
         {
             SystemMessaging::GetInstance()->obtainWriteRights(it->destination,
-                                                              this->moduleID);
+                                                              this->writeModuleID);
         }
         it->source = SystemMessaging::GetInstance()->
         FindMessageID(it->messageSource, this->processData.source);
         if(it->source >= 0)
         {
             SystemMessaging::GetInstance()->obtainReadRights(it->source,
-                                                             this->moduleID);
+                                                             this->readModuleID);
         }
         if(it->destination < 0 || it->source < 0)
         {
@@ -157,9 +161,9 @@ void InterfaceDataExchange::routeMessages()
             continue;
         }
         SystemMessaging::GetInstance()->ReadMessage(it->source, &dataHeader,
-            localHdr->MaxMessageSize, msgBuffer, moduleID);
+            localHdr->MaxMessageSize, this->msgBuffer, this->readModuleID);
         SystemMessaging::GetInstance()->WriteMessage(it->destination,
-            dataHeader.WriteClockNanos, dataHeader.WriteSize, this->msgBuffer, this->moduleID);
+            dataHeader.WriteClockNanos, dataHeader.WriteSize, this->msgBuffer, this->writeModuleID);
         it->updateCounter = localHdr->UpdateCounter;
     }
 }
