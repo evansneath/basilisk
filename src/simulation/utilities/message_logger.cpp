@@ -108,7 +108,7 @@ void messageLogger::linkMessages()
  functionality begins to consume significant parts of our runtime
  @return void
  */
-void messageLogger::logAllMessages()
+void messageLogger::logAllMessages(uint64_t processID)
 {
     //! Begin  method steps
     //! - Iterate through the message list and log any needed messages
@@ -116,7 +116,7 @@ void messageLogger::logAllMessages()
     for(it=logData.begin(); it != logData.end(); it++)
     {
         //! - Message ID is invalid if it is less than zero
-        if(it->messageID <0)
+        if(it->messageID <0 || it->processID != processID)
         {
             continue;
         }

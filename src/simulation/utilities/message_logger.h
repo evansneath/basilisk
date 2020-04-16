@@ -61,7 +61,7 @@ public:
     void addMessageLog(std::string messageName, uint64_t messagePeriod=0);
     void linkMessages();
     bool messagesLinked() {return allLogsLinked;} //!< Getter for link success
-    void logAllMessages();
+    void logAllMessages(uint64_t processID);
     bool readLog(MessageIdentData & messageID, SingleMessageHeader *dataHeader,
                  uint64_t maxBytes, uint8_t *msgPayload, uint64_t currentOffset=0);
     uint64_t getLogCount(int64_t processID, int64_t messageID);

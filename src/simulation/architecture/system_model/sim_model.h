@@ -22,6 +22,9 @@
 #include <vector>
 #include <stdint.h>
 #include <set>
+#include <thread>
+#include <mutex>
+#include <iostream>
 #include "architecture/system_model/sys_process.h"
 #include "architecture/messaging/system_messaging.h"
 #include "utilities/message_logger.h"
@@ -38,6 +41,42 @@ typedef enum varAccessType {
     logBuffer = 1
 }VarAccessType;
 
+class SimThreadExecution
+{
+public:
+    SimThreadExecution();
+    SimThreadExecution(uint64_t threadIdent, uint64_t currentSimNanos=0, messageLogger *logger=nullptr);    //!< Constructor for a given sim thread
+    ~SimThreadExecution();   //!< Destructor for given sim thread
+    void updateNewStopTime(uint64_t newStopNanos) {stopThreadNanos = newStopNanos;}
+    void clearProcessList() {processList.clear();}
+    void addNewProcess(SysProcess* newProc) {processList.push_back(newProc);}
+    bool threadActive() {return this->threadRunning;};
+    bool threadValid() {return (!this->terminateThread);}
+    void killThread() {this->terminateThread=true;}
+    void lockThread();
+    void unlockThread();
+    void lockMaster();
+    void unlockMaster();
+    void StepUntilStop();  //!< Step simulation until stop time uint64_t reached
+    void SingleStepProcesses(int64_t stopPri=-1); //!< Step only the next Task in the simulation
+public:
+    uint64_t currentThreadNanos;  //!< Current simulation time available at thread
+    uint64_t stopThreadNanos;   //!< Current stop conditions for the thread
+    int64_t stopThreadPriority; //!< Current stop priority for thread
+    uint64_t threadID;          //!< Identifier for thread
+    std::thread *threadContext;
+    uint64_t CurrentNanos;  //!< [ns] Current sim time
+    uint64_t NextTaskTime;  //!< [ns] time for the next Task
+    int64_t nextProcPriority;  //!< [-] Priority level for the next process
+    messageLogger *messageLogs;  //!< -- Message log data
+private:
+    bool threadRunning;            //!< Flag that will allow for easy concurrent locking
+    bool terminateThread;          //!< Flag that indicates that it is time to take thread down
+    std::mutex masterThreadLock;   //!< Lock that ensures master thread won't proceed
+    std::mutex selfThreadLock;     //!< Lock that ensures this thread only reaches allowed time
+    std::vector<SysProcess*> processList;  //!< List of processes associated with thread
+};
+
 //! The top-level container for an entire simulation
 class SimModel
 {
@@ -47,10 +86,12 @@ public:
     void selfInitSimulation();  //!< Method to initialize all added Tasks
     void crossInitSimulation();  //!< Method to initialize all added Tasks
     void resetInitSimulation();  //!< Method to reset all added tasks
-    void StepUntilStop(uint64_t SimStopTime, int64_t stopPri);  //!< Step simulation until stop time uint64_t reached
-    void SingleStepProcesses(int64_t stopPri=-1); //!< Step only the next Task in the simulation
+    void StepUntilStop(uint64_t SimStopTime, int64_t stopPri); //!< Method to step threads
     void PrintSimulatedMessageData();  //!< Print out all messages that have been created
     void addNewProcess(SysProcess *newProc);
+    void clearProcsFromThreads();
+    void resetThreads(uint64_t threadCount);
+    void deleteThreads();
     uint64_t IsMsgCreated(std::string MessageName);
     uint64_t GetWriteData(std::string MessageName, uint64_t MaxSize,
                           void *MessageData, VarAccessType logType = messageBuffer,
@@ -76,11 +117,11 @@ public:
 
 public:
     std::vector<SysProcess *> processList;  //!< -- List of processes we've created
+    std::vector<SimThreadExecution*> threadList;  //!< -- Array of threads that we're running on
     std::string SimulationName;  //!< -- Identifier for Sim
-    uint64_t CurrentNanos;  //!< [ns] Current sim time
-    uint64_t NextTaskTime;  //!< [ns] time for the next Task
-    int64_t nextProcPriority;  //!< [-] Priority level for the next process
     messageLogger messageLogs;  //!< -- Message log data
+    uint64_t NextTaskTime;      //!< ns Current simulation nanos across all of the threads
+    uint64_t CurrentNanos;      //!< ns Current simulation nanos across all of the threads
 };
 
 /*! @} */

@@ -21,18 +21,181 @@
 #include <cstring>
 #include <iostream>
 
+void activateNewThread(void *threadData)
+{
+
+    SimThreadExecution *theThread = static_cast<SimThreadExecution*> (threadData);
+
+    //std::cout << "Starting thread yes" << std::endl;
+    theThread->lockMaster();
+    while(theThread->threadValid())
+    {
+        theThread->lockThread();
+        theThread->StepUntilStop();
+        //std::cout << "Stepping thread"<<std::endl;
+        theThread->unlockMaster();
+
+    }
+    //std::cout << "Killing thread" << std::endl;
+
+}
+
+SimThreadExecution::SimThreadExecution(uint64_t threadIdent, uint64_t currentSimNanos, messageLogger *logger) : SimThreadExecution(){
+
+    currentThreadNanos = currentSimNanos;
+    threadID = threadIdent;
+    messageLogs = logger;
+}
+
+SimThreadExecution::~SimThreadExecution() {
+
+}
+
+SimThreadExecution::SimThreadExecution() {
+    currentThreadNanos = 0;
+    threadRunning = false;
+    terminateThread = false;
+    threadID = 0;
+    CurrentNanos = 0;
+    NextTaskTime = 0;
+    nextProcPriority = -1;
+    messageLogs = nullptr;
+    threadContext = nullptr;
+
+}
+
+void SimThreadExecution::lockThread() {
+    this->selfThreadLock.lock();
+}
+
+void SimThreadExecution::lockMaster() {
+    this->masterThreadLock.lock();
+}
+
+void SimThreadExecution::unlockThread() {
+    this->selfThreadLock.unlock();
+}
+
+void SimThreadExecution::unlockMaster() {
+    this->masterThreadLock.unlock();
+}
+
+/*! This method steps all of the processes forward to the current time.  It also
+    increments the internal simulation time appropriately as the simulation
+    processes are triggered
+    @param int64_t stopPri The priority level below which the sim won't go
+    @return void
+*/
+void SimThreadExecution::SingleStepProcesses(int64_t stopPri)
+{
+    uint64_t nextCallTime = ~((uint64_t) 0);
+    std::vector<SysProcess *>::iterator it = this->processList.begin();
+    this->CurrentNanos = this->NextTaskTime;
+    while(it!= this->processList.end())
+    {
+        SysProcess *localProc = (*it);
+        if(localProc->processEnabled())
+        {
+            while(localProc->nextTaskTime < this->CurrentNanos ||
+                  (localProc->nextTaskTime == this->CurrentNanos &&
+                   localProc->processPriority >= stopPri))
+            {
+                localProc->singleStepNextTask(this->CurrentNanos);
+            }
+            if(localProc->getNextTime() < nextCallTime)
+            {
+                nextCallTime = localProc->getNextTime();
+                this->nextProcPriority = localProc->processPriority;
+            }
+            else if(localProc->getNextTime() == nextCallTime &&
+                    localProc->processPriority > this->nextProcPriority)
+            {
+                this->nextProcPriority = localProc->processPriority;
+            }
+        }
+        it++;
+    }
+    if(SystemMessaging::GetInstance()->getFailureCount() > 0)
+    {
+        throw std::range_error("Message reads or writes failed.  Please examine output.\n");
+    }
+    this->NextTaskTime = nextCallTime != ~((uint64_t) 0) ? nextCallTime : this->CurrentNanos;
+    //std::
+    // << "Next task time: " << this->NextTaskTime << std::endl;
+    //! - If a message has been added to logger, link the message IDs
+    for(it = processList.begin(); it!=processList.end(); it++) {
+        this->messageLogs->logAllMessages((*it)->messageBuffer);
+    }
+}
+
+/*! This method steps the simulation until the specified stop time and
+ stop priority have been reached.
+ @return void
+ */
+void SimThreadExecution::StepUntilStop()
+{
+    /*! - Note that we have to step until both the time is greater and the next
+     Task's start time is in the future. If the NextTaskTime is less than
+     SimStopTime, then the inPri shouldn't come into effect, so set it to -1
+     (that's less than all process priorities, so it will run through the next
+     process)*/
+    int64_t inPri = stopThreadNanos == this->NextTaskTime ? stopThreadPriority : -1;
+    while(this->NextTaskTime < stopThreadNanos || (this->NextTaskTime == stopThreadNanos &&
+                                               this->nextProcPriority >= stopThreadPriority) )
+    {
+        this->SingleStepProcesses(inPri);
+        inPri = stopThreadNanos == this->NextTaskTime ? stopThreadPriority : -1;
+    }
+}
+
 /*! This Constructor is used to initialize the top-level sim model.
  */
 SimModel::SimModel()
 {
-    this->CurrentNanos = 0;
+
+    this->threadList.clear();
+
+    //Default to single-threaded runtime
+    SimThreadExecution *newThread = new SimThreadExecution(0, 0, &messageLogs);
+    this->threadList.push_back(newThread);
+
     this->NextTaskTime = 0;
-    this->nextProcPriority = -1;
+    this->CurrentNanos = 0;
 }
 
 /*! Nothing to destroy really */
 SimModel::~SimModel()
 {
+    this->deleteThreads();
+}
+
+/*! This method steps the simulation until the specified stop time and
+ stop priority have been reached.
+ @return void
+ @param uint64_t SimStopTime Nanoseconds to step the simulation for
+ @param int64_t stopPri The priority level below which the sim won't go
+ */
+void SimModel::StepUntilStop(uint64_t SimStopTime, int64_t stopPri)
+{
+    std::vector<SimThreadExecution*>::iterator thrIt;
+    //std::cout << "Executing step main: " << SimStopTime << std::endl;
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        (*thrIt)->stopThreadNanos = SimStopTime;
+        (*thrIt)->stopThreadPriority = stopPri;
+        (*thrIt)->unlockThread();
+    }
+    this->NextTaskTime = (*this->threadList.begin())->NextTaskTime;
+    this->CurrentNanos = (*this->threadList.begin())->CurrentNanos;
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        (*thrIt)->lockMaster();
+        this->NextTaskTime = (*thrIt)->NextTaskTime < this->NextTaskTime ?
+                             (*thrIt)->NextTaskTime : this->NextTaskTime;
+        this->CurrentNanos = (*thrIt)->CurrentNanos < this->CurrentNanos ?
+                             (*thrIt)->CurrentNanos : this->CurrentNanos;
+
+    }
 }
 
 /*! This method exists to provide the python layer with a handle to call to
@@ -147,10 +310,7 @@ void SimModel::selfInitSimulation()
     {
         throw std::range_error("Message creation failed during self.  Please examine output.\n");
     }
-    this->NextTaskTime = 0;
-    this->CurrentNanos = 0;
-    it=this->processList.begin();
-    this->nextProcPriority = (*it)->processPriority;
+
 }
 /*! This method goes through all of the processes in the simulation,
  *  all of the tasks within each process, and all of the models within
@@ -178,83 +338,36 @@ void SimModel::crossInitSimulation()
 void SimModel::resetInitSimulation()
 {
     std::vector<SysProcess *>::iterator it;
-    for(it=this->processList.begin(); it!= this->processList.end(); it++)
+    std::vector<SimThreadExecution*>::iterator thrIt;
+    for(it=this->processList.begin(), thrIt=threadList.begin(); it!= this->processList.end(); it++, thrIt++)
     {
+        if(thrIt == threadList.end())
+        {
+            thrIt = threadList.begin();
+        }
         (*it)->resetProcess(0);
+        (*thrIt)->addNewProcess((*it));
     }
     if(SystemMessaging::GetInstance()->getFailureCount() > 0)
     {
         throw std::range_error("Message creation failed during reset.  Please examine output.\n");
     }
-}
 
-/*! This method steps all of the processes forward to the current time.  It also
-    increments the internal simulation time appropriately as the simulation
-    processes are triggered
-    @param int64_t stopPri The priority level below which the sim won't go
-    @return void
-*/
-void SimModel::SingleStepProcesses(int64_t stopPri)
-{
-    uint64_t nextCallTime = ~((uint64_t) 0);
-    std::vector<SysProcess *>::iterator it = this->processList.begin();
-    this->CurrentNanos = this->NextTaskTime;
-    while(it!= this->processList.end())
+    this->NextTaskTime = 0;
+    this->CurrentNanos = 0;
+    //std::cout << "Entering simulation reset" << std::endl;
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
     {
-        SysProcess *localProc = (*it);
-        if(localProc->processEnabled())
-        {
-            while(localProc->nextTaskTime < this->CurrentNanos ||
-                (localProc->nextTaskTime == this->CurrentNanos &&
-                  localProc->processPriority >= stopPri))
-            {
-                localProc->singleStepNextTask(this->CurrentNanos);
-            }
-            if(localProc->getNextTime() < nextCallTime)
-            {
-                nextCallTime = localProc->getNextTime();
-                this->nextProcPriority = localProc->processPriority;
-            }
-            else if(localProc->getNextTime() == nextCallTime &&
-                localProc->processPriority > this->nextProcPriority)
-            {
-                this->nextProcPriority = localProc->processPriority;
-            }
-        }
-        it++;
+        it=this->processList.begin();
+        (*thrIt)->nextProcPriority = (*it)->processPriority;
+        (*thrIt)->NextTaskTime = 0;
+        (*thrIt)->CurrentNanos = 0;
+        (*thrIt)->lockThread();
+        (*thrIt)->threadContext = new std::thread(activateNewThread, (*thrIt));
     }
-    if(SystemMessaging::GetInstance()->getFailureCount() > 0)
-    {
-        throw std::range_error("Message reads or writes failed.  Please examine output.\n");
-    }
-    this->NextTaskTime = nextCallTime != ~((uint64_t) 0) ? nextCallTime : this->CurrentNanos;
-    //! - If a message has been added to logger, link the message IDs
     if(!this->messageLogs.messagesLinked())
     {
         this->messageLogs.linkMessages();
-    }
-    this->messageLogs.logAllMessages();
-}
-
-/*! This method steps the simulation until the specified stop time and
- stop priority have been reached.
- @return void
- @param uint64_t SimStopTime Nanoseconds to step the simulation for
- @param int64_t stopPri The priority level below which the sim won't go
- */
-void SimModel::StepUntilStop(uint64_t SimStopTime, int64_t stopPri)
-{
-    /*! - Note that we have to step until both the time is greater and the next
-     Task's start time is in the future. If the NextTaskTime is less than
-     SimStopTime, then the inPri shouldn't come into effect, so set it to -1
-     (that's less than all process priorities, so it will run through the next
-     process)*/
-    int64_t inPri = SimStopTime == this->NextTaskTime ? stopPri : -1;
-    while(this->NextTaskTime < SimStopTime || (this->NextTaskTime == SimStopTime &&
-            this->nextProcPriority >= stopPri) )
-    {
-        this->SingleStepProcesses(inPri);
-        inPri = SimStopTime == this->NextTaskTime ? stopPri : -1;
     }
 }
 
@@ -272,8 +385,14 @@ void SimModel::ResetSimulation()
         (*it)->reInitProcess();
     }
     this->messageLogs.clearLogs();
-    this->CurrentNanos = 0;
+    std::vector<SimThreadExecution*>::iterator thrIt;
     this->NextTaskTime = 0;
+    this->CurrentNanos = 0;
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        (*thrIt)->NextTaskTime = 0;
+        (*thrIt)->CurrentNanos = 0;
+    }
 }
 
 /*! This method exists to provide a hook into the messaging system for creating
@@ -423,7 +542,7 @@ std::set<std::pair<long int, long int>> SimModel::getMessageExchangeData(std::st
 {
     std::set<std::pair<long int, long int>> returnPairs;
     bool messageFound = false;
-    for(int64_t i=0; i<SystemMessaging::GetInstance()->getProcessCount(); i++)
+    for(uint64_t i=0; i<SystemMessaging::GetInstance()->getProcessCount(); i++)
     {
         if(procList.find((uint64_t)i) == procList.end() && procList.size() > 0)
         {
@@ -469,3 +588,41 @@ std::set<long int> SimModel::findChildModules(std::string procName) {
 
     return outSet;
 }
+
+void SimModel::clearProcsFromThreads() {
+
+    std::vector<SimThreadExecution*>::iterator thrIt;
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        (*thrIt)->clearProcessList();
+    }
+
+}
+
+void SimModel::resetThreads(uint64_t threadCount)
+{
+
+    this->clearProcsFromThreads();
+    this->deleteThreads();
+    this->threadList.clear();
+    for(uint64_t i=0; i<threadCount; i++)
+    {
+        SimThreadExecution *newThread = new SimThreadExecution(0, 0, &messageLogs);
+        this->threadList.push_back(newThread);
+    }
+
+}
+
+void SimModel::deleteThreads() {
+    std::vector<SimThreadExecution*>::iterator thrIt;
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        (*thrIt)->killThread();
+        (*thrIt)->unlockThread();
+        if((*thrIt)->threadContext && (*thrIt)->threadContext->joinable()) {
+            (*thrIt)->threadContext->join();
+        }
+        delete (*thrIt);
+    }
+}
+
