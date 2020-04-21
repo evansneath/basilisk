@@ -146,11 +146,6 @@ void SysProcess::singleStepNextTask(uint64_t currentNanos)
         return;
     }
     //! - Call the next scheduled model, and set the time to its start
-    if(currentNanos != this->prevRouteTime)
-    {
-        routeInterfaces();
-        this->prevRouteTime = currentNanos;
-    }
     SysModelTask *localTask = it->TaskPtr;
     localTask->ExecuteTaskList(currentNanos);
     
@@ -213,13 +208,17 @@ void SysProcess::scheduleTask(ModelScheduleEntry & taskCall)
     It needs to be executed prior to dispatching the process' models
     @return void
 */
-void SysProcess::routeInterfaces()
+void SysProcess::routeInterfaces(uint64_t currentNanos)
 {
+    if(currentNanos == this->prevRouteTime) {
+        return;
+    }
     std::vector<SysInterface *>::iterator it;
     for(it=this->intRefs.begin(); it!= this->intRefs.end(); it++)
     {
         (*it)->routeInputs(this->messageBuffer);
     }
+    this->prevRouteTime = currentNanos;
 }
 
 /*! The name kind of says it all right?  It is a shotgun used to disable all of 

@@ -62,7 +62,7 @@ public:
     void addInterfaceRef(SysInterface *newInt) {this->intRefs.push_back(newInt);}
 	void changeTaskPeriod(std::string taskName, uint64_t newPeriod);
     void setPriority(int64_t newPriority) {this->processPriority = newPriority;}
-    void routeInterfaces();
+    void routeInterfaces(uint64_t currentNanos);
     void disableAllTasks();
     void enableAllTasks();
     

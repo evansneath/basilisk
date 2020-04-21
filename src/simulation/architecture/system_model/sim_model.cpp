@@ -148,6 +148,15 @@ void SimThreadExecution::StepUntilStop()
     }
 }
 
+void SimThreadExecution::moveProcessMessages() {
+    std::vector<SysProcess *>::iterator it;
+    for(it = this->processList.begin(); it != this->processList.end(); it++)
+    {
+        (*it)->routeInterfaces(this->CurrentNanos);
+    }
+
+}
+
 /*! This Constructor is used to initialize the top-level sim model.
  */
 SimModel::SimModel()
@@ -181,6 +190,10 @@ void SimModel::StepUntilStop(uint64_t SimStopTime, int64_t stopPri)
     //std::cout << "Executing step main: " << SimStopTime << std::endl;
     for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
     {
+        (*thrIt)->moveProcessMessages();
+    }
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
         (*thrIt)->stopThreadNanos = SimStopTime;
         (*thrIt)->stopThreadPriority = stopPri;
         (*thrIt)->unlockThread();
@@ -194,7 +207,6 @@ void SimModel::StepUntilStop(uint64_t SimStopTime, int64_t stopPri)
                              (*thrIt)->NextTaskTime : this->NextTaskTime;
         this->CurrentNanos = (*thrIt)->CurrentNanos < this->CurrentNanos ?
                              (*thrIt)->CurrentNanos : this->CurrentNanos;
-
     }
 }
 

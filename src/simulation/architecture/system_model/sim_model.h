@@ -59,6 +59,7 @@ public:
     void unlockMaster();
     void StepUntilStop();  //!< Step simulation until stop time uint64_t reached
     void SingleStepProcesses(int64_t stopPri=-1); //!< Step only the next Task in the simulation
+    void moveProcessMessages();
 public:
     uint64_t currentThreadNanos;  //!< Current simulation time available at thread
     uint64_t stopThreadNanos;   //!< Current stop conditions for the thread
