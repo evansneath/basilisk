@@ -28,6 +28,8 @@ void activateNewThread(void *threadData)
 
     //std::cout << "Starting thread yes" << std::endl;
     theThread->lockMaster();
+    theThread->postInit();
+
     while(theThread->threadValid())
     {
         theThread->lockThread();
@@ -154,6 +156,32 @@ void SimThreadExecution::moveProcessMessages() {
     {
         (*it)->routeInterfaces(this->CurrentNanos);
     }
+
+}
+
+void SimThreadExecution::waitOnInit() {
+    std::unique_lock<std::mutex> lck(this->initReadyLock);
+    while(!this->threadActive())
+    {
+        (this)->initHoldVar.wait(lck);
+    }
+}
+
+void SimThreadExecution::postInit() {
+    std::unique_lock<std::mutex> lck(this->initReadyLock);
+    this->threadReady();
+    this->initHoldVar.notify_one();
+}
+
+void SimThreadExecution::selfInitProcesses() {
+    std::vector<SysProcess *>::iterator it;
+    for(it=this->processList.begin(); it!= this->processList.end(); it++)
+    {
+        (*it)->selfInitProcess();
+    }
+}
+
+void SimThreadExecution::crossInitProcesses() {
 
 }
 
@@ -376,6 +404,10 @@ void SimModel::resetInitSimulation()
         (*thrIt)->CurrentNanos = 0;
         (*thrIt)->lockThread();
         (*thrIt)->threadContext = new std::thread(activateNewThread, (*thrIt));
+    }
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        (*thrIt)->waitOnInit();
     }
     if(!this->messageLogs.messagesLinked())
     {

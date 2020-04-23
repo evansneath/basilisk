@@ -24,6 +24,7 @@
 #include <set>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <iostream>
 #include "architecture/system_model/sys_process.h"
 #include "architecture/messaging/system_messaging.h"
@@ -49,8 +50,13 @@ public:
     ~SimThreadExecution();   //!< Destructor for given sim thread
     void updateNewStopTime(uint64_t newStopNanos) {stopThreadNanos = newStopNanos;}
     void clearProcessList() {processList.clear();}
+    void selfInitProcesses();
+    void crossInitProcesses();
     void addNewProcess(SysProcess* newProc) {processList.push_back(newProc);}
     bool threadActive() {return this->threadRunning;};
+    void threadReady() {this->threadRunning=true;}
+    void waitOnInit();
+    void postInit();
     bool threadValid() {return (!this->terminateThread);}
     void killThread() {this->terminateThread=true;}
     void lockThread();
@@ -76,6 +82,8 @@ private:
     std::mutex masterThreadLock;   //!< Lock that ensures master thread won't proceed
     std::mutex selfThreadLock;     //!< Lock that ensures this thread only reaches allowed time
     std::vector<SysProcess*> processList;  //!< List of processes associated with thread
+    std::mutex initReadyLock;      //!< Lock function to ensure runtime locks are configured
+    std::condition_variable initHoldVar; //!< Conditional variable used to prevent race conditions
 };
 
 //! The top-level container for an entire simulation
