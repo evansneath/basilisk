@@ -33,7 +33,21 @@ void activateNewThread(void *threadData)
     while(theThread->threadValid())
     {
         theThread->lockThread();
-        theThread->StepUntilStop();
+        if(theThread->selfInitNow){
+            theThread->selfInitProcesses();
+            theThread->selfInitNow = false;
+        }
+        else if(theThread->crossInitNow){
+            theThread->crossInitProcesses();
+            theThread->crossInitNow = false;
+        }
+        else if(theThread->resetNow){
+            theThread->resetProcesses();
+            theThread->resetNow = false;
+        }
+        else{
+            theThread->StepUntilStop();
+        }
         //std::cout << "Stepping thread"<<std::endl;
         theThread->unlockMaster();
 
@@ -57,6 +71,8 @@ SimThreadExecution::SimThreadExecution() {
     currentThreadNanos = 0;
     threadRunning = false;
     terminateThread = false;
+    selfInitNow = false;
+    crossInitNow = false;
     threadID = 0;
     CurrentNanos = 0;
     NextTaskTime = 0;
@@ -182,7 +198,19 @@ void SimThreadExecution::selfInitProcesses() {
 }
 
 void SimThreadExecution::crossInitProcesses() {
+    std::vector<SysProcess *>::iterator it;
+    for(it=this->processList.begin(); it!= this->processList.end(); it++)
+    {
+        (*it)->crossInitProcess();
+    }
+}
 
+void SimThreadExecution::resetProcesses() {
+    std::vector<SysProcess *>::iterator it;
+    for(it=this->processList.begin(); it!= this->processList.end(); it++)
+    {
+        (*it)->resetProcess(this->currentThreadNanos);
+    }
 }
 
 /*! This Constructor is used to initialize the top-level sim model.
@@ -341,10 +369,15 @@ void SimModel::addNewProcess(SysProcess *newProc)
  */
 void SimModel::selfInitSimulation()
 {
-    std::vector<SysProcess *>::iterator it;
-    for(it=this->processList.begin(); it!= this->processList.end(); it++)
+    std::vector<SimThreadExecution*>::iterator thrIt;
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
     {
-        (*it)->selfInitProcess();
+        (*thrIt)->selfInitNow = true;
+        (*thrIt)->unlockThread();
+    }
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        (*thrIt)->lockMaster();
     }
     if(SystemMessaging::GetInstance()->getFailureCount() > 0)
     {
@@ -359,10 +392,15 @@ void SimModel::selfInitSimulation()
  */
 void SimModel::crossInitSimulation()
 {
-    std::vector<SysProcess *>::iterator it;
-    for(it=this->processList.begin(); it!= this->processList.end(); it++)
+    std::vector<SimThreadExecution*>::iterator thrIt;
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
     {
-        (*it)->crossInitProcess();
+        (*thrIt)->crossInitNow = true;
+        (*thrIt)->unlockThread();
+    }
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        (*thrIt)->lockMaster();
     }
     if(SystemMessaging::GetInstance()->getFailureCount() > 0)
     {
@@ -377,16 +415,16 @@ void SimModel::crossInitSimulation()
  */
 void SimModel::resetInitSimulation()
 {
-    std::vector<SysProcess *>::iterator it;
+
     std::vector<SimThreadExecution*>::iterator thrIt;
-    for(it=this->processList.begin(), thrIt=threadList.begin(); it!= this->processList.end(); it++, thrIt++)
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
     {
-        if(thrIt == threadList.end())
-        {
-            thrIt = threadList.begin();
-        }
-        (*it)->resetProcess(0);
-        (*thrIt)->addNewProcess((*it));
+        (*thrIt)->resetNow = true;
+        (*thrIt)->unlockThread();
+    }
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        (*thrIt)->lockMaster();
     }
     if(SystemMessaging::GetInstance()->getFailureCount() > 0)
     {
@@ -395,20 +433,7 @@ void SimModel::resetInitSimulation()
 
     this->NextTaskTime = 0;
     this->CurrentNanos = 0;
-    //std::cout << "Entering simulation reset" << std::endl;
-    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
-    {
-        it=this->processList.begin();
-        (*thrIt)->nextProcPriority = (*it)->processPriority;
-        (*thrIt)->NextTaskTime = 0;
-        (*thrIt)->CurrentNanos = 0;
-        (*thrIt)->lockThread();
-        (*thrIt)->threadContext = new std::thread(activateNewThread, (*thrIt));
-    }
-    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
-    {
-        (*thrIt)->waitOnInit();
-    }
+
     if(!this->messageLogs.messagesLinked())
     {
         this->messageLogs.linkMessages();
@@ -668,5 +693,34 @@ void SimModel::deleteThreads() {
         }
         delete (*thrIt);
     }
+}
+
+void SimModel::assignRemainingProcs() {
+
+    std::vector<SysProcess *>::iterator it;
+    std::vector<SimThreadExecution*>::iterator thrIt;
+    for(it=this->processList.begin(), thrIt=threadList.begin(); it!= this->processList.end(); it++, thrIt++)
+    {
+        if(thrIt == threadList.end())
+        {
+            thrIt = threadList.begin();
+        }
+        (*thrIt)->addNewProcess((*it));
+    }
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        it=this->processList.begin();
+        (*thrIt)->nextProcPriority = (*it)->processPriority;
+        (*thrIt)->NextTaskTime = 0;
+        (*thrIt)->CurrentNanos = 0;
+        (*thrIt)->lockThread();
+        (*thrIt)->threadContext = new std::thread(activateNewThread, (*thrIt));
+    }
+    for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
+    {
+        (*thrIt)->waitOnInit();
+    }
+
+
 }
 

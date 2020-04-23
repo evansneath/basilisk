@@ -52,6 +52,7 @@ public:
     void clearProcessList() {processList.clear();}
     void selfInitProcesses();
     void crossInitProcesses();
+    void resetProcesses();
     void addNewProcess(SysProcess* newProc) {processList.push_back(newProc);}
     bool threadActive() {return this->threadRunning;};
     void threadReady() {this->threadRunning=true;}
@@ -76,6 +77,9 @@ public:
     uint64_t NextTaskTime;  //!< [ns] time for the next Task
     int64_t nextProcPriority;  //!< [-] Priority level for the next process
     messageLogger *messageLogs;  //!< -- Message log data
+    bool selfInitNow;              //!< Flag requesting self init
+    bool crossInitNow;             //!< Flag requesting cross-init
+    bool resetNow;
 private:
     bool threadRunning;            //!< Flag that will allow for easy concurrent locking
     bool terminateThread;          //!< Flag that indicates that it is time to take thread down
@@ -95,6 +99,7 @@ public:
     void selfInitSimulation();  //!< Method to initialize all added Tasks
     void crossInitSimulation();  //!< Method to initialize all added Tasks
     void resetInitSimulation();  //!< Method to reset all added tasks
+    void assignRemainingProcs(); //!< Assign remaining processes to available cores
     void StepUntilStop(uint64_t SimStopTime, int64_t stopPri); //!< Method to step threads
     void PrintSimulatedMessageData();  //!< Print out all messages that have been created
     void addNewProcess(SysProcess *newProc);

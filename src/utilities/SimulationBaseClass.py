@@ -350,6 +350,7 @@ class SimBaseClass:
                 Task.resetTask(self.TotalSim.CurrentNanos)
 
     def InitializeSimulation(self):
+        self.TotalSim.assignRemainingProcs()
         self.TotalSim.ResetSimulation()
         self.TotalSim.selfInitSimulation()
         for proc in self.pyProcList:
