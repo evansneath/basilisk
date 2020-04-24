@@ -96,6 +96,7 @@ void SysProcess::resetProcess(uint64_t currentTime)
         SysModelTask *localTask = it->TaskPtr;
         localTask->ResetTaskList(currentTime); //! Time of reset. Models that utilize currentTime will start at this.
     }
+    this->nextTaskTime = currentTime;
     return;
 }
 

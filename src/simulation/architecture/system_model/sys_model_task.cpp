@@ -105,6 +105,8 @@ void SysModelTask::ResetTaskList(uint64_t CurrentSimTime)
 	{
 		(*ModelPair).ModelPtr->Reset(CurrentSimTime);
 	}
+	this->NextStartTime = CurrentSimTime;
+    this->NextPickupTime = this->NextStartTime + this->TaskPeriod;
 }
 
 /*! This method executes all of the models on the Task during runtime.

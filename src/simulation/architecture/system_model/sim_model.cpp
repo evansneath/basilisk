@@ -207,6 +207,9 @@ void SimThreadExecution::crossInitProcesses() {
 
 void SimThreadExecution::resetProcesses() {
     std::vector<SysProcess *>::iterator it;
+    this->currentThreadNanos = 0;
+    this->CurrentNanos = 0;
+    this->NextTaskTime = 0;
     for(it=this->processList.begin(); it!= this->processList.end(); it++)
     {
         (*it)->resetProcess(this->currentThreadNanos);
