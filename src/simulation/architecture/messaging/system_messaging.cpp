@@ -37,6 +37,7 @@ SystemMessaging :: SystemMessaging()
     this->WriteFails = 0;
     this->ReadFails = 0;
     this->nextModuleID = 0;
+    this->trackReads = false;
 }
 
 /*!
@@ -596,20 +597,23 @@ bool SystemMessaging::ReadMessage(int64_t MessageID, SingleMessageHeader
         return(false);
     }
 
-    std::vector<MessageExchangeData>::iterator exIt;
-    std::vector<AllowAccessData>::iterator accIt;
-    accIt = msgPtr->subData.begin();
-    exIt = msgPtr->exchangeData.begin();
-    accIt += MessageID;
-    exIt += MessageID;
-    if(accIt->accessList.find(moduleID) == accIt->accessList.end()
-       && moduleID != -1)
-    {
-        BSK_PRINT(MSG_WARNING, "Message %s was read by module ID %" PRId64 " who is not on access list.", MsgHdr->MessageName, moduleID);
-    }
+    if(this->trackReads) {
+        std::vector<MessageExchangeData>::iterator exIt;
+        std::vector<AllowAccessData>::iterator accIt;
+        accIt = msgPtr->subData.begin();
+        exIt = msgPtr->exchangeData.begin();
+        accIt += MessageID;
+        exIt += MessageID;
+        if (accIt->accessList.find(moduleID) == accIt->accessList.end()
+            && moduleID != -1) {
+            BSK_PRINT(MSG_WARNING, "Message %s was read by module ID %"
+                    PRId64
+                    " who is not on access list.", MsgHdr->MessageName, moduleID);
+        }
 
-    exIt->exchangeList.insert(std::pair<long int, long int>
-                                      (MsgHdr->previousPublisher, moduleID));
+        exIt->exchangeList.insert(std::pair<long int, long int>
+                                          (MsgHdr->previousPublisher, moduleID));
+    }
 
     newMsg = this->readMessageFromBuffer(MessageID, DataHeader, MaxBytes, MsgPayload, activeBuff, CurrentOffset);
     return(newMsg);

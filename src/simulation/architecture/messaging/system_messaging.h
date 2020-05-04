@@ -150,6 +150,7 @@ public:
     void addModuleToProcess(int64_t moduleID, std::string procName);
     MessageStorageContainer* getProcData(int64_t buffSelect);
     MessageStorageContainer* findResProcess(int64_t moduleID, int64_t *buffSel);
+    void setReadTracking(bool newTrack) {trackReads = newTrack;}
 
 private:
     SystemMessaging();
@@ -160,6 +161,7 @@ private:
 private:
     static SystemMessaging *TheInstance;
     std::vector<MessageStorageContainer *> dataBuffers;
+    bool trackReads;       //!< Flag to enable message tracking
     uint64_t WriteFails;  //! the number of times we tried to write invalidly
     uint64_t ReadFails;  //! the number of times we tried to read invalidly
     uint64_t CreateFails;  //! the number of times we tried to create invalidly

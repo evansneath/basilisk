@@ -246,7 +246,7 @@ SimModel::~SimModel()
 void SimModel::StepUntilStop(uint64_t SimStopTime, int64_t stopPri)
 {
     std::vector<SimThreadExecution*>::iterator thrIt;
-    //std::cout << "Executing step main: " << SimStopTime << std::endl;
+    std::cout << std::flush;
     for(thrIt=this->threadList.begin(); thrIt != this->threadList.end(); thrIt++)
     {
         (*thrIt)->moveProcessMessages();
@@ -725,5 +725,9 @@ void SimModel::assignRemainingProcs() {
     }
 
 
+}
+
+void SimModel::setReadTracking(bool newTrack) {
+    SystemMessaging::GetInstance()->setReadTracking(newTrack);
 }
 

@@ -127,6 +127,7 @@ public:
         std::set<unsigned long> procList  = std::set<unsigned long>());
     void terminateSimulation();
     std::set<long int> findChildModules(std::string procName);
+    void setReadTracking(bool newTrack=true);
     BSKLogger bskLogger;                      //!< -- BSK Logging
 
 public:
