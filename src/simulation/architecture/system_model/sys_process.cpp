@@ -131,33 +131,46 @@ void SysProcess::reInitProcess()
 void SysProcess::singleStepNextTask(uint64_t currentNanos)
 {
     std::vector<ModelScheduleEntry>::iterator it;
-    int32_t localPriority;
+    std::vector<ModelScheduleEntry>::iterator fireIt;
 
     //! - Check to make sure that there are models to be called.
-    it = this->processTasks.begin();
-    if(it == this->processTasks.end())
+    if(this->processTasks.begin() == this->processTasks.end())
     {
         bskLogger.bskLog(BSK_WARNING, "Received a step command on sim that has no active Tasks.");
         return;
     }
+    fireIt=this->processTasks.begin();
     //! - If the requested time does not meet our next start time, just return
-    if(it->NextTaskStart > currentNanos)
+    for(it=this->processTasks.begin(); it!=this->processTasks.end(); it++)
+    {
+        if(it->NextTaskStart < fireIt->NextTaskStart ||
+                (it->NextTaskStart==fireIt->NextTaskStart && it->taskPriority > fireIt->taskPriority))
+        {
+            fireIt = it;
+        }
+    }
+    if(fireIt->NextTaskStart > currentNanos)
     {
         this->nextTaskTime = it->NextTaskStart;
         return;
     }
     //! - Call the next scheduled model, and set the time to its start
-    SysModelTask *localTask = it->TaskPtr;
+    SysModelTask *localTask = fireIt->TaskPtr;
     localTask->ExecuteTaskList(currentNanos);
-    
-    //! - Erase the current call from the stack and schedule the next call
-    localPriority = it->taskPriority;
-    this->processTasks.erase(it);
-    this->addNewTask(localTask, localPriority);
+    fireIt->NextTaskStart = localTask->NextStartTime;
     
     //! - Figure out when we are going to be called next for scheduling purposes
-    it = this->processTasks.begin();
-    this->nextTaskTime = it->NextTaskStart;
+    fireIt=this->processTasks.begin();
+    //! - If the requested time does not meet our next start time, just return
+    for(it=this->processTasks.begin(); it!=this->processTasks.end(); it++)
+    {
+        if(it->NextTaskStart < fireIt->NextTaskStart ||
+           (it->NextTaskStart==fireIt->NextTaskStart && it->taskPriority > fireIt->taskPriority))
+        {
+            fireIt = it;
+        }
+    }
+    this->nextTaskTime = fireIt->NextTaskStart;
 }
 
 /*! This method adds a new task into the T\task list.  Note that
@@ -266,13 +279,8 @@ void SysProcess::changeTaskPeriod(std::string taskName, uint64_t newPeriod)
 		if (it->TaskPtr->TaskName == taskName)
 		{
 			it->TaskPtr->updatePeriod(newPeriod);
-			ModelScheduleEntry localEntry;
-			localEntry.TaskPtr = it->TaskPtr;
-			localEntry.TaskUpdatePeriod = it->TaskPtr->TaskPeriod;
-			localEntry.NextTaskStart = it->TaskPtr->NextStartTime;
-			localEntry.taskPriority = it->taskPriority;
-            this->processTasks.erase(it);
-            this->scheduleTask(localEntry);
+			it->NextTaskStart = it->TaskPtr->NextStartTime;
+			it->TaskUpdatePeriod = it->TaskPtr->TaskPeriod;
 			return;
 		}
 	}
