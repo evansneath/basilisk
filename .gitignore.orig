@@ -33,11 +33,9 @@ src/utilities/MonteCarlo/__init__.py
 src/utilities/vizProtobuffer/__init__.py
 externalTools/fswAuto/autosetter/sets/*
 externalTools/fswAuto/autowrapper/wraps/*
-**/outputFiles/*
 =======
-tools/fswAuto/autosetter/sets/*
-tools/fswAuto/autowrapper/wraps/*
->>>>>>> de4114df2... add the autowrapper output directory to the folder of things to ignore
+>>>>>>> 85fa6825a... rename the output folder outputFolder for both directories.  This allows us to not include the code output in the RST documentation, and tell git to ignore all folders with this name.
+**/outputFiles/*
 
 *.fdb_latexmk
 *.fls
