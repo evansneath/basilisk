@@ -36,7 +36,8 @@ externalTools/fswAuto/autowrapper/wraps/*
 **/outputFiles/*
 =======
 tools/fswAuto/autosetter/sets/*
->>>>>>> e88c3df95... add the autosetter output directory to the files to be ignored
+tools/fswAuto/autowrapper/wraps/*
+>>>>>>> de4114df2... add the autowrapper output directory to the folder of things to ignore
 
 *.fdb_latexmk
 *.fls
