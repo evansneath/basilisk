@@ -62,6 +62,8 @@ Version |release|
 - added new attitude pointing scenario :ref:`scenarioAttitudeFeedback2T_stateEffTH` that uses
   the new :ref:`thrusterStateEffector`
 - added ability to simulate faults within :ref:`coarseSunSensor` module
+- created a 1-DoF rotating rigid body class :ref:`spinningBody`. It is built in a general way to simulate any effector
+  with a single spinning axis.
 
 
 Version 2.1.3 (May 25, 2022)
