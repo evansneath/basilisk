@@ -51,8 +51,11 @@ Eigen::Vector3d eigenMRPd2Vector3d(Eigen::MRPd vec);
 //!@brief maps the DCM to MRPs using Eigen variables
 Eigen::MRPd eigenC2MRP(Eigen::Matrix3d);
 
-//!@brief solves for the zero of the provided function
+//!@brief solves for the zero of the provided function using Newton-Raphson
 double newtonRaphsonSolve(double initialEstimate, double accuracy, std::function< double(double) >& f, std::function< double(double) >& fPrime);
+
+//!@brief solves for the zero of the provided function using Bisection
+double bisectionSolve(double *interval, double accuracy, std::function< double(double) >& f);
 
 
 #endif /* _AVSEIGENSUPPORT_ */
