@@ -91,14 +91,14 @@ private:
     Eigen::Vector3d rPrimePrime_FcB_B;
     Eigen::Vector3d omega_BN_B;
     Eigen::Vector3d omega_FN_B;
-    Eigen::Vector3d rDot_FcB_B; n
+    Eigen::Vector3d rDot_FcB_B;
     Eigen::MRPd sigma_BN;
     Eigen::Vector3d sigma_FB;
 
     // Matrix quantities
     Eigen::Matrix3d rTilde_FcB_B;
     Eigen::Matrix3d omegaTilde_BN_B;
-    Eigen::Matrix3d omegaTilde_FB_B
+    Eigen::Matrix3d omegaTilde_FB_B;
 
     // Effector body properties
     Eigen::Vector3d r_FcN_N;

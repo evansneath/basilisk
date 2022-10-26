@@ -192,8 +192,8 @@ void PrescribedMotionStateEffector::updateContributions(double integTime, BackSu
     Eigen::Matrix3d rPrimeTilde_FcB_B = eigenTilde(this->rPrime_FcB_B);
 
     // Define rPrimePrime_FcB_B
-    this->rPrimePrime_FM_B = this->dcm_BM * this->rPrimePrime_FM_M
-    this->rPrimePrime_FcB_B = (omegaPrimeTilde_FB_B + this->omegaTilde_FB_B * this->omegaTilde_FB_B)) * this->r_FcF_B + this->rPrimePrime_FM_B;
+    this->rPrimePrime_FM_B = this->dcm_BM * this->rPrimePrime_FM_M;
+    this->rPrimePrime_FcB_B = (omegaPrimeTilde_FB_B + this->omegaTilde_FB_B * this->omegaTilde_FB_B) * this->r_FcF_B + this->rPrimePrime_FM_B;
 
     // Translation contributions
     backSubContr.vecTrans = -this->mass * this->rPrimePrime_FcB_B;
