@@ -117,8 +117,11 @@ def test_prescribedMotion(show_plots):
     platform.IHubBc_B = scObject.hub.IHubPntBc_B
     platform.IPntFc_F = [[50.0, 0.0, 0.0], [0.0, 50.0, 0.0], [0.0, 0.0, 50.0]]
     platform.dcm_F0B = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
-    platform.r_MB_B = [[0.0], [0.0], [1.0]]
-    platform.r_FcF_F = [[0.0], [0.0], [1.0]]
+    platform.r_MB_B = [[1.0], [0.0], [0.0]]
+    platform.r_FcF_F = [[1.0], [0.0], [0.0]]
+    platform.r_FM_MInit = [[1.0, 0.0, 0.0]]
+    platform.rPrime_FM_MInit = [[0.0, 0.0, 0.0]]
+    platform.rPrimePrime_FM_MInit = [[0.0, 0.0, 0.0]]
     platform.theta_FBInit = 0.0
     platform.thetaDot_FBInit = 0.0
     platform.ModelTag = "Platform"

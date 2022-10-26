@@ -42,6 +42,9 @@ public:
     Eigen::Matrix3d IPntFc_F;
     Eigen::Vector3d r_MB_B;
     Eigen::Vector3d r_FcF_F;
+    Eigen::Vector3d r_FM_MInit;
+    Eigen::Vector3d rPrime_FM_MInit;
+    Eigen::Vector3d rPrimePrime_FM_MInit;
     double theta_FBInit;
     double thetaDot_FBInit;
     double u_B;
@@ -83,23 +86,19 @@ private:
     // Vector quantities
     Eigen::Vector3d r_FcB_B;
     Eigen::Vector3d r_FcM_B;
-    Eigen::Vector3d rPrime_FcF_B;
     Eigen::Vector3d rPrime_FcM_B;
     Eigen::Vector3d rPrime_FcB_B;
     Eigen::Vector3d rPrimePrime_FcB_B;
     Eigen::Vector3d omega_BN_B;
     Eigen::Vector3d omega_FN_B;
-    Eigen::Vector3d omega_FM_B;
-    Eigen::Vector3d omega_MB_B;
-    Eigen::Vector3d rDot_FcF_B;
-    Eigen::Vector3d rDot_FcB_B;
+    Eigen::Vector3d rDot_FcB_B; n
     Eigen::MRPd sigma_BN;
     Eigen::Vector3d sigma_FB;
 
     // Matrix quantities
     Eigen::Matrix3d rTilde_FcB_B;
     Eigen::Matrix3d omegaTilde_BN_B;
-    Eigen::Matrix3d IPrimePntFc_B;
+    Eigen::Matrix3d omegaTilde_FB_B
 
     // Effector body properties
     Eigen::Vector3d r_FcN_N;

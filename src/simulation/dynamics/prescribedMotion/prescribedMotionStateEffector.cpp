@@ -41,6 +41,9 @@ PrescribedMotionStateEffector::PrescribedMotionStateEffector()
     this->IPntFc_F.Identity();
     this->r_MB_B.setZero();
     this->r_FcF_F.setZero();
+    this->r_FM_MInit.setZero();
+    this->rPrime_FM_MInit.setZero();
+    this->rPrimePrime_FM_MInit.setZero();
     this->theta_FBInit = 0.0;
     this->thetaDot_FBInit = 0.0;
     this->u_B = 0.0;
@@ -141,9 +144,10 @@ void PrescribedMotionStateEffector::updateEffectorMassProps(double integTime)
     this->effProps.mEff = this->mass;
 
     // Call function to compute prescribed parameters and dcm_BF
-    this->computePrescribedParameters(integTime);
+    computePrescribedParameters(integTime);
 
     // Compute the effector's CoM with respect to point B
+    this->r_FM_B = this->dcm_BM * this->r_FM_M;
     this->r_FB_B = this->r_FM_B + this->r_MB_B;
     this->r_FcF_B = this->dcm_BF * this->r_FcF_F;
     this->r_FcB_B = this->r_FcF_B + this->r_FB_B;
@@ -155,14 +159,14 @@ void PrescribedMotionStateEffector::updateEffectorMassProps(double integTime)
     this->effProps.IEffPntB_B = this->IPntFc_B - this->mass * this->rTilde_FcB_B * this->rTilde_FcB_B;
 
     // Find rPrime_FcB_B
-    Eigen::Matrix3d omegaTilde_FB_B = eigenTilde(this->omega_FB_B);
-    this->rPrime_FcF_B = omegaTilde_FB_B * this->r_FcF_B;
-    this->rPrime_FcB_B = omegaTilde_FB_B * this->r_FcF_B + this->rPrime_FM_B;
+    this->omegaTilde_FB_B = eigenTilde(this->omega_FB_B);
+    this->rPrime_FM_B = this->dcm_BF * this->rPrime_FM_M;
+    this->rPrime_FcB_B = this->omegaTilde_FB_B * this->r_FcF_B + this->rPrime_FM_B;
     this->effProps.rEffPrime_CB_B = this->rPrime_FcB_B;
 
     // Find body time derivative of IPntFc_B
     Eigen::Matrix3d rPrimeTilde_FcB_B = eigenTilde(this->rPrime_FcB_B);
-    this->effProps.IEffPrimePntB_B = omegaTilde_FB_B* this->IPntFc_B - this->IPntFc_B * omegaTilde_FB_B
+    this->effProps.IEffPrimePntB_B = this->omegaTilde_FB_B* this->IPntFc_B - this->IPntFc_B * this->omegaTilde_FB_B
         + this->mass * (rPrimeTilde_FcB_B * this->rTilde_FcB_B.transpose() + this->rTilde_FcB_B * rPrimeTilde_FcB_B.transpose());
 
     return;
@@ -183,33 +187,20 @@ void PrescribedMotionStateEffector::updateContributions(double integTime, BackSu
     // Define omegaPrimeTilde_FB_B
     Eigen::Matrix3d omegaPrimeTilde_FB_B = eigenTilde(this->omegaPrime_FB_B);
 
-    // Define r_FcF_B
-    this->r_FcF_B = this->dcm_BF * this->r_FcF_F;
-    Eigen::Matrix3d rTilde_FcF_B = eigenTilde(this->r_FcF_B);
-
-    // Define r_FcB_B
-    this->r_FcB_B = this->r_FcF_B + this->r_FM_B + this->r_MB_B;
-    this->rTilde_FcB_B = eigenTilde(this->r_FcB_B);
-
-    // Define IPntFc_B
-    this->IPntFc_B = this->dcm_BF * this->IPntFc_F * this->dcm_BF.transpose();
-
-    // Define IPntF_B for compactness
-    Eigen::Matrix3d IPntF_B = this->IPntFc_B - this->mass * rTilde_FcF_B * rTilde_FcF_B;
-
     // Define rPrime_FcB_B
-    Eigen::Matrix3d omegaTilde_FB_B = eigenTilde(this->omega_FB_B);
-    this->rPrime_FcB_B = omegaTilde_FB_B * this->r_FcF_B + this->rPrime_FM_B;
+    this->rPrime_FcB_B = this->omegaTilde_FB_B * this->r_FcF_B + this->rPrime_FM_B;
     Eigen::Matrix3d rPrimeTilde_FcB_B = eigenTilde(this->rPrime_FcB_B);
 
     // Define rPrimePrime_FcB_B
-    this->rPrimePrime_FcB_B = (omegaPrimeTilde_FB_B + (omegaTilde_FB_B * omegaTilde_FB_B)) * this->r_FcF_B + this->rPrimePrime_FM_B;
+    this->rPrimePrime_FM_B = this->dcm_BM * this->rPrimePrime_FM_M
+    this->rPrimePrime_FcB_B = (omegaPrimeTilde_FB_B + this->omegaTilde_FB_B * this->omegaTilde_FB_B)) * this->r_FcF_B + this->rPrimePrime_FM_B;
 
     // Translation contributions
     backSubContr.vecTrans = -this->mass * this->rPrimePrime_FcB_B;
 
     // Rotation contributions
-    backSubContr.vecRot = - this->mass * rTilde_FcB_B * this->rPrimePrime_FcB_B - (this->IPrimePntFc_B + this->omegaTilde_BN_B * this->IPntFc_B ) * this->omega_FB_B - this->IPntFc_B * this->omegaPrime_FB_B - this->mass * this->omegaTilde_BN_B * rTilde_FcB_B * this->rPrime_FcB_B;
+    Eigen::Matrix3d IPrimePntFc_B = this->omegaTilde_FB_B * this->IPntFc_B - this->IPntFc_B * this->omegaTilde_FB_B;
+    backSubContr.vecRot = - this->mass * this->rTilde_FcB_B * this->rPrimePrime_FcB_B - (IPrimePntFc_B + this->omegaTilde_BN_B * this->IPntFc_B ) * this->omega_FB_B - this->IPntFc_B * this->omegaPrime_FB_B - this->mass * this->omegaTilde_BN_B * rTilde_FcB_B * this->rPrime_FcB_B;
 
     return;
 }
@@ -278,12 +269,12 @@ void PrescribedMotionStateEffector::UpdateState(uint64_t CurrentSimNanos)
 
 void PrescribedMotionStateEffector::computePrescribedParameters(double integTime)
 {
-    this->rPrime_FM_B.setZero();
-    this->rPrimePrime_FM_B.setZero();
-
-    Eigen::Vector3d rotAxis_B;
-    rotAxis_B.setZero();
-    rotAxis_B(this->rotAxisNum,this->rotAxisNum)  = 1;
+    this->r_FM_M = this->r_FM_MInit;
+    this->rPrime_FM_M = this->rPrime_FM_MInit;
+    this->rPrimePrime_FM_M = this->rPrimePrime_FM_MInit;
+    
+    double rotAxis_B[3] = {0.0, 0.0, 0.0};
+    rotAxis_B[this->rotAxisNum] = 1;
 
     // Define scalar local variables
     double theta_FB = ( 0.5 / ( this->IHubBc_B(this->rotAxisNum,this->rotAxisNum) + this->IPntFc_B(this->rotAxisNum,this->rotAxisNum) ) ) * this->u_B * integTime * integTime + this->thetaDot_FBInit * integTime + this->theta_FBInit;
@@ -306,9 +297,7 @@ void PrescribedMotionStateEffector::computePrescribedParameters(double integTime
 
     // Compute the DCM from F frame to B frame, dcm_BF
     double dcm_F0F[3][3];
-    double prv_F0F_array[3];
-    Eigen::Vector3d prv_F0F = -theta_FB * rotAxis_B;
-    eigenVector3d2CArray(prv_F0F, prv_F0F_array);
+    double prv_F0F_array[3] = {-theta_FB * rotAxis_B[0], -theta_FB * rotAxis_B[1], -theta_FB * rotAxis_B[2]};
     PRV2C(prv_F0F_array, dcm_F0F);
     this->dcm_BF = this->dcm_F0B.transpose() * c2DArray2EigenMatrix3d(dcm_F0F);
 
