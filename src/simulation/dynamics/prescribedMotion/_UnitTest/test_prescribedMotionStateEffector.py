@@ -287,9 +287,9 @@ def test_prescribedMotion(show_plots):
 
     # Testing setup
     accuracy = 1e-12
-    finalOrbAngMom = numpy.delete(finalOrbAngMom, 0, axis=1)  # remove time column
-    finalRotAngMom = numpy.delete(finalRotAngMom, 0, axis=1)  # remove time column
-    finalOrbEnergy = numpy.delete(finalOrbEnergy, 0, axis=1)  # remove time column
+    finalOrbAngMom = np.delete(finalOrbAngMom, 0, axis=1)  # remove time column
+    finalRotAngMom = np.delete(finalRotAngMom, 0, axis=1)  # remove time column
+    finalOrbEnergy = np.delete(finalOrbEnergy, 0, axis=1)  # remove time column
 
     for i in range(0, len(initialOrbAngMom_N)):
         # check a vector values
