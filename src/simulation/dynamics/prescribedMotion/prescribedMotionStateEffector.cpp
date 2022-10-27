@@ -187,10 +187,6 @@ void PrescribedMotionStateEffector::updateContributions(double integTime, BackSu
     // Define omegaPrimeTilde_FB_B
     Eigen::Matrix3d omegaPrimeTilde_FB_B = eigenTilde(this->omegaPrime_FB_B);
 
-    // Define rPrime_FcB_B
-    this->rPrime_FcB_B = this->omegaTilde_FB_B * this->r_FcF_B + this->rPrime_FM_B;
-    Eigen::Matrix3d rPrimeTilde_FcB_B = eigenTilde(this->rPrime_FcB_B);
-
     // Define rPrimePrime_FcB_B
     this->rPrimePrime_FM_B = this->dcm_BM * this->rPrimePrime_FM_M;
     this->rPrimePrime_FcB_B = (omegaPrimeTilde_FB_B + this->omegaTilde_FB_B * this->omegaTilde_FB_B) * this->r_FcF_B + this->rPrimePrime_FM_B;
@@ -219,11 +215,11 @@ void PrescribedMotionStateEffector::updateEnergyMomContributions(double integTim
     this->omegaTilde_BN_B = eigenTilde(this->omega_BN_B);
     this->omega_FN_B = this->omega_FB_B + this->omega_BN_B;
 
-    // Compute rDot_FcB_B
-    this->rDot_FcB_B = this->rPrime_FcB_B + this->omegaTilde_BN_B * this->r_FcB_B;
-
     // Find rotational angular momentum contribution from hub
     rotAngMomPntCContr_B = this->IPntFc_B * this->omega_FB_B + this->mass * this->rTilde_FcB_B * this->rPrime_FcB_B;
+
+    // Compute rDot_FcB_B
+    this->rDot_FcB_B = this->rPrime_FcB_B + this->omegaTilde_BN_B * this->r_FcB_B;
 
     // Find rotational energy contribution from the hub
     rotEnergyContr = 0.5 * this->omega_FN_B.dot(this->IPntFc_B * this->omega_FN_B) + 0.5 * this->mass * this->rDot_FcB_B.dot(this->rDot_FcB_B);
