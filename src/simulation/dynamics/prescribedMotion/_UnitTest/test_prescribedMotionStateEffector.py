@@ -78,17 +78,6 @@ def test_prescribedMotion(show_plots):
     scObject = spacecraft.Spacecraft()
     scObject.ModelTag = "spacecraftBody"
 
-    # Define mass properties of the rigid hub of the spacecraft
-    scObject.hub.mHub = 750.0
-    scObject.hub.r_BcB_B = [[0.0], [0.0], [0.5]]
-    scObject.hub.IHubPntBc_B = [[900.0, 0.0, 0.0], [0.0, 800.0, 0.0], [0.0, 0.0, 600.0]]
-
-    # Set the initial values for the states
-    scObject.hub.r_CN_NInit = [[-4020338.690396649], [7490566.741852513], [5248299.211589362]]
-    scObject.hub.v_CN_NInit = [[-5199.77710904224], [-3436.681645356935], [1041.576797498721]]
-    scObject.hub.sigma_BNInit = [[0.0], [0.0], [0.0]]
-    scObject.hub.omega_BN_BInit = [[0.0], [0.0], [0.0]]
-
     unitTaskName = "unitTask"  # arbitrary name (don't change)
     unitProcessName = "TestProcess"  # arbitrary name (don't change)
 
@@ -102,8 +91,8 @@ def test_prescribedMotion(show_plots):
     testProc.addTask(unitTestSim.CreateNewTask(unitTaskName, testProcessRate))
 
     # Create prescribed state effector
-    simTime1 = 30.0
-    simTime2 = 60.0 + testIncrement
+    simTime1 = 5
+    simTime2 = simTime1 + testIncrement
 
     platform = prescribedMotionStateEffector.PrescribedMotionStateEffector()
 
@@ -114,21 +103,33 @@ def test_prescribedMotion(show_plots):
 
     # Define properties of state effector
     platform.mass = 100.0
-    platform.IHubBc_B = scObject.hub.IHubPntBc_B
+    platform.IHubBc_B = [[900.0, 0.0, 0.0], [0.0, 800.0, 0.0], [0.0, 0.0, 600.0]]
     platform.IPntFc_F = [[50.0, 0.0, 0.0], [0.0, 50.0, 0.0], [0.0, 0.0, 50.0]]
-    platform.dcm_F0B = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     platform.r_MB_B = [[1.0], [0.0], [0.0]]
-    platform.r_FcF_F = [[1.0], [0.0], [0.0]]
-    platform.r_FM_MInit = [[1.0, 0.0, 0.0]]
-    platform.rPrime_FM_MInit = [[0.0, 0.0, 0.0]]
-    platform.rPrimePrime_FM_MInit = [[0.0, 0.0, 0.0]]
+    platform.r_FcF_F = [[0.0], [0.0], [0.0]]
+    platform.r_FM_MInit = [[1.0], [0.0], [0.0]]
+    platform.rPrime_FM_MInit = [[0.0], [0.0], [0.0]]
+    platform.rPrimePrime_FM_MInit = [[0.0], [0.0], [0.0]]
     platform.theta_FBInit = 0.0
     platform.thetaDot_FBInit = 0.0
-    platform.ModelTag = "Platform"
+    platform.omega_BN_BInit = [[-0.1], [0.0], [0.0]]
+    platform.dcm_F0B = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     platform.rotAxisNum = rotAxisNum
+    platform.ModelTag = "Platform"
 
     # Add platform to spacecraft
     scObject.addStateEffector(platform)
+
+    # Define mass properties of the rigid hub of the spacecraft
+    scObject.hub.mHub = 750.0
+    scObject.hub.r_BcB_B = [[0.0], [0.0], [0.0]]
+    scObject.hub.IHubPntBc_B = [[900.0, 0.0, 0.0], [0.0, 800.0, 0.0], [0.0, 0.0, 600.0]]
+
+    # Set the initial values for the states
+    scObject.hub.r_CN_NInit = [[-4020338.690396649], [7490566.741852513], [5248299.211589362]]
+    scObject.hub.v_CN_NInit = [[-5199.77710904224], [-3436.681645356935], [1041.576797498721]]
+    scObject.hub.sigma_BNInit = [[0.0], [0.0], [0.0]]
+    scObject.hub.omega_BN_BInit = [[-0.1], [0.0], [0.0]]
 
     # Add test module to runtime call list
     unitTestSim.AddModelToTask(unitTaskName, scObject)
@@ -159,11 +160,11 @@ def test_prescribedMotion(show_plots):
     unitTestSim.AddModelToTask(unitTaskName, prescribedStateData)
 
     # Setup and run the simulation
-    platform.u_B = 1.0
+    platform.u_B = 0.5
     unitTestSim.ConfigureStopTime(macros.sec2nano(simTime1))
     unitTestSim.ExecuteSimulation()
 
-    platform.u_B = -1.0
+    platform.u_B = 0.5
     unitTestSim.ConfigureStopTime(macros.sec2nano(simTime1 + simTime2))
     unitTestSim.ExecuteSimulation()
 
@@ -182,105 +183,114 @@ def test_prescribedMotion(show_plots):
     initialOrbEnergy = [[orbEnergy[0, 1]]]
     finalOrbEnergy = [orbEnergy[-1]]
 
+    timespan = prescribedStateData.times()
+    numElements = len(timespan)
+
     # Calculate analytic results
-    u_B = [] # Empty list to store prescribed control input
+    uPrescribed_B = [] # Empty list to store prescribed control input
     # theta_FB_Analytic = []
     # thetaDot_FB_Analytic = []
     # thetaDDot_FB_Analytic = []
-    theta_BN_Analytic = []
+
+    # theta_BN_Analytic = []
     thetaDot_BN_Analytic = []
     # thetaDDot_BN_Analytic = []
     # omega_FB_B_Analytic = [] # Empty list to store analytic omega_FB_B
     # omegaDot_FB_B_Analytic = [] # Empty list to store analytic omegaDot_FB_B
-    omega_BN_B_Analytic = [] # Empty list to store analytic omega_BN_B
+    # omega_BN_B_Analytic = [] # Empty list to store analytic omega_BN_B
     # omegaDot_BN_B_Analytic = []  # Empty list to store analytic omegaDot_BN_B
-    theta_BN_AnalyticInit = 0.0
+    # theta_BN_AnalyticInit = 0.0
+    thetaDot_BN_AnalyticInit = -0.1
 
-    for i in range(0, len(prescribedStateData.times())):
-        tt = prescribedStateData.times[:, i]
-        if tt < 0.5 * len(prescribedStateData.times()):
-            u_B[i] = 1.0
+    term1 = scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum]
+
+    for i in range(0, numElements):
+        tt = 1e-9*timespan[i]
+        if tt > simTime1:
+            u_B = 0.5
         else:
-            u_B[i] = -1.0
+            u_B = 0.5
+
+        uPrescribed_B.append(u_B)
         # theta_FB_Analytic[i] = (0.5 / (scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum] + platform.IPntFc_F[rotAxisNum][rotAxisNum])) * u_B[i] * tt * tt + platform.thetaDot_FBInit * tt + platform.theta_FBInit
-        # thetaDot_FB_Analytic[i] = (1 / (scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum] + platform.IPntFc_F[rotAxisNum][rotAxisNum])) * u_B[i] * tt + platform.thetaDot_FBInit
+        # thetaDot_FB_Analytic.append( (1 / (scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum] + platform.IPntFc_F[rotAxisNum][rotAxisNum])) * u_B[i] * tt + platform.thetaDot_FBInit )
         # thetaDDot_FB_Analytic[i] = (1 / (scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum] + platform.IPntFc_F[rotAxisNum][rotAxisNum])) * u_B[i]
         # omega_FB_B_Analytic[:, i] = [[0.0], [0.0], [0.0]]
         # omega_FB_B_Analytic[rotAxisNum, i] = thetaDot_FB_Analytic[i]
         # omegaDot_FB_B_Analytic[:, i] = [[0.0], [0.0], [0.0]]
         # omegaDot_FB_B_Analytic[rotAxisNum, i] = thetaDDot_FB_Analytic[i]
-        theta_BN_Analytic[i] = ( -0.5 / scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum] ) * u_B[i] * tt * tt + scObject.hub.omega_BN_BInit * tt + theta_BN_AnalyticInit
-        thetaDot_BN_Analytic[i] = ( - 1 / scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum] ) * u_B[i] * tt + scObject.hub.omega_BN_BInit
+        # theta_BN_Analytic.append( ( ( -0.5 / term1 ) * u_B * tt * tt + scObject.hub.omega_BN_BInit * tt + theta_BN_AnalyticInit ) )
+        thetaDot_BN_Analytic.append( ( - 1 / term1 ) * u_B * tt + thetaDot_BN_AnalyticInit )
         # thetaDDot_BN_Analytic[i] = ( - 1 / scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum] ) * u_B[i]
-        omega_BN_B_Analytic[:, i] = [[0.0], [0.0], [0.0]]
-        omega_BN_B_Analytic[rotAxisNum, i] = thetaDot_BN_Analytic[i]
+        # omega_BN_B_Analytic.append( thetaDot_BN_Analytic[i] )
+        # print(omega_BN_B_Analytic[i,:])
+        # omega_BN_B_Analytic[rotAxisNum,i] = thetaDot_BN_Analytic[i]
         # omegaDot_BN_B_Analytic[:, i] = [[0.0], [0.0], [0.0]]
         # omegaDot_BN_B_Analytic[rotAxisNum, i] = thetaDDot_BN_Analytic[i]
 
+    plt.close("all")
+
     # Plotting: analytic results
-    plt.figure()
-    plt.clf()
-    plt.plot(prescribedStateData.times() * 1e-9, omega_BN_B_Analytic[:, 0],
-             prescribedStateData.times() * 1e-9, omega_BN_B_Analytic[:, 1],
-             prescribedStateData.times() * 1e-9, omega_BN_B_Analytic[:, 2])
-    plt.xlabel('Time (s)')
-    plt.ylabel('Analytic omega_BN_B')
+    # plt.figure()
+    # plt.clf()
+    # plt.plot(timespan * 1e-9, omega_BN_B_Analytic[:, 0],
+    #          timespan * 1e-9, omega_BN_B_Analytic[:, 1],
+    #          timespan * 1e-9, omega_BN_B_Analytic[:, 2])
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('Analytic omega_BN_B')
 
     plt.figure()
     plt.clf()
-    plt.plot(prescribedStateData.times() * 1e-9, theta_BN_Analytic[:, 0],
-             prescribedStateData.times() * 1e-9, theta_BN_Analytic[:, 1],
-             prescribedStateData.times() * 1e-9, theta_BN_Analytic[:, 2])
-    plt.xlabel('Time (s)')
-    plt.ylabel('Analytic theta_BN_B')
-
-    plt.figure()
-    plt.clf()
-    plt.plot(prescribedStateData.times() * 1e-9, u_B[:, 0],
-             prescribedStateData.times() * 1e-9, u_B[:, 1],
-             prescribedStateData.times() * 1e-9, u_B[:, 2])
+    plt.plot(timespan * 1e-9, uPrescribed_B)
     plt.xlabel('Time (s)')
     plt.ylabel('Prescribed Control Input Torque')
 
     # Plotting: Difference between numerical and analytical omega_BN_B
     plt.figure()
     plt.clf()
-    plt.plot(prescribedStateData.times() * 1e-9, (omega_BN_B[:, 0] - omega_BN_B_Analytic[:, 0]),
-             prescribedStateData.times() * 1e-9, (omega_BN_B[:, 1] - omega_BN_B_Analytic[:, 1]),
-             prescribedStateData.times() * 1e-9, (omega_BN_B[:, 2] - omega_BN_B_Analytic[:, 2]))
+    plt.plot(timespan * 1e-9, (omega_BN_B[:, rotAxisNum] - thetaDot_BN_Analytic) )
     plt.xlabel('Time (s)')
-    plt.ylabel('Difference Between Analytic and Simulated omega_BN_B')
+    plt.ylabel('Difference Between Analytic and Simulated omega_BN_B')\
 
-    # Plotting: Prescribed effector states
-    plt.figure()
-    plt.clf()
-    plt.plot(prescribedStateData.times() * 1e-9, omega_FB_F[:, 0],
-             prescribedStateData.times() * 1e-9, omega_FB_F[:, 1],
-             prescribedStateData.times() * 1e-9, omega_FB_F[:, 2])
-    plt.xlabel('Time (s)')
-    plt.ylabel('Omega_FB_F Components')
+    # # Plotting: Difference between numerical and analytical omega_BN_B
+    # plt.figure()
+    # plt.clf()
+    # plt.plot(timespan * 1e-9, (omega_BN_B[:, 0] - omega_BN_B_Analytic))
+    # plt.plot(timespan * 1e-9, (omega_BN_B[:, 0] - omega_BN_B_Analytic[:, 0]),
+    #          timespan * 1e-9, (omega_BN_B[:, 1] - omega_BN_B_Analytic[:, 1]),
+    #          timespan * 1e-9, (omega_BN_B[:, 2] - omega_BN_B_Analytic[:, 2]))
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('Difference Between Analytic and Simulated omega_BN_B')
+
+    # # Plotting: Prescribed effector states
+    # plt.figure()
+    # plt.clf()
+    # plt.plot(timespan * 1e-9, omega_FB_F[:, 0],
+    #          timespan * 1e-9, omega_FB_F[:, 1],
+    #          timespan * 1e-9, omega_FB_F[:, 2])
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('Omega_FB_F Components')
 
     # Plotting: conservation quantities
-    plt.close("all")
     plt.figure()
     plt.clf()
-    plt.plot(orbAngMom_N[:, 0] * 1e-9, (orbAngMom_N[:, 1] - orbAngMom_N[0, 1]) / orbAngMom_N[0, 1],
-             orbAngMom_N[:, 0] * 1e-9, (orbAngMom_N[:, 2] - orbAngMom_N[0, 2]) / orbAngMom_N[0, 2],
-             orbAngMom_N[:, 0] * 1e-9, (orbAngMom_N[:, 3] - orbAngMom_N[0, 3]) / orbAngMom_N[0, 3])
+    plt.plot(timespan * 1e-9, (orbAngMom_N[:, 1] - orbAngMom_N[0, 1]) / orbAngMom_N[0, 1],
+             timespan * 1e-9, (orbAngMom_N[:, 2] - orbAngMom_N[0, 2]) / orbAngMom_N[0, 2],
+             timespan * 1e-9, (orbAngMom_N[:, 3] - orbAngMom_N[0, 3]) / orbAngMom_N[0, 3])
     plt.xlabel('Time (s)')
     plt.ylabel('Orbital Angular Momentum Relative Difference')
 
     plt.figure()
     plt.clf()
-    plt.plot(orbEnergy[:, 0] * 1e-9, (orbEnergy[:, 1] - orbEnergy[0, 1]) / orbEnergy[0, 1])
+    plt.plot(timespan * 1e-9, (orbEnergy[:, 1] - orbEnergy[0, 1]) / orbEnergy[0, 1])
     plt.xlabel('Time (s)')
     plt.ylabel('Orbital Energy Relative Difference')
 
     plt.figure()
     plt.clf()
-    plt.plot(rotAngMom_N[:, 0] * 1e-9, (rotAngMom_N[:, 1] - rotAngMom_N[0, 1]) / rotAngMom_N[0, 1],
-             rotAngMom_N[:, 0] * 1e-9, (rotAngMom_N[:, 2] - rotAngMom_N[0, 2]) / rotAngMom_N[0, 2],
-             rotAngMom_N[:, 0] * 1e-9, (rotAngMom_N[:, 3] - rotAngMom_N[0, 3]) / rotAngMom_N[0, 3])
+    plt.plot(timespan * 1e-9, (rotAngMom_N[:, 1] - rotAngMom_N[0, 1]) / rotAngMom_N[0, 1],
+             timespan * 1e-9, (rotAngMom_N[:, 2] - rotAngMom_N[0, 2]),
+             timespan * 1e-9, (rotAngMom_N[:, 3] - rotAngMom_N[0, 3]))
     plt.xlabel('Time (s)')
     plt.ylabel('Rotational Angular Momentum Relative Difference')
 

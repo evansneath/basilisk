@@ -39,20 +39,16 @@ PrescribedMotionStateEffector::PrescribedMotionStateEffector()
     this->mass = 0.0;
     this->IHubBc_B.Identity();
     this->IPntFc_F.Identity();
-    this->r_MB_B.setZero();
-    this->r_FcF_F.setZero();
-    this->r_FM_MInit.setZero();
+    // this->r_MB_B.setZero();
+    // this->r_FcF_F.setZero();
+    this->r_FM_MInit = {1.0, 0.0, 0.0};
     this->rPrime_FM_MInit.setZero();
     this->rPrimePrime_FM_MInit.setZero();
-    this->theta_FBInit = 0.0;
-    this->thetaDot_FBInit = 0.0;
-    this->u_B = 0.0;
     this->dcm_BF.Identity();
     this->dcm_BM.Identity();
     this->dcm_F0B.Identity();
-    this->rotAxisNum = 0;
+    this->u = 0.0;
     this->effectorID++; 
-
     return;
 }
 
@@ -144,10 +140,11 @@ void PrescribedMotionStateEffector::updateEffectorMassProps(double integTime)
     this->effProps.mEff = this->mass;
 
     // Call function to compute prescribed parameters and dcm_BF
-    computePrescribedParameters(integTime);
+    this->computePrescribedParameters(integTime);
 
     // Compute the effector's CoM with respect to point B
     this->r_FM_B = this->dcm_BM * this->r_FM_M;
+    // std::cout << this->r_FM_B << std::endl;
     this->r_FB_B = this->r_FM_B + this->r_MB_B;
     this->r_FcF_B = this->dcm_BF * this->r_FcF_F;
     this->r_FcB_B = this->r_FcF_B + this->r_FB_B;
@@ -160,7 +157,7 @@ void PrescribedMotionStateEffector::updateEffectorMassProps(double integTime)
 
     // Find rPrime_FcB_B
     this->omegaTilde_FB_B = eigenTilde(this->omega_FB_B);
-    this->rPrime_FM_B = this->dcm_BF * this->rPrime_FM_M;
+    this->rPrime_FM_B = this->dcm_BM * this->rPrime_FM_M;
     this->rPrime_FcB_B = this->omegaTilde_FB_B * this->r_FcF_B + this->rPrime_FM_B;
     this->effProps.rEffPrime_CB_B = this->rPrime_FcB_B;
 
@@ -174,7 +171,7 @@ void PrescribedMotionStateEffector::updateEffectorMassProps(double integTime)
 
 /*! This method allows the state effector to give its contributions to the matrices needed for the back-sub
  method */
-void PrescribedMotionStateEffector::updateContributions(double integTime, BackSubMatrices & backSubContr, Eigen::Vector3d sigma_BN, Eigen::Vector3d omega_BN_B)
+void PrescribedMotionStateEffector::updateContributions(double integTime, BackSubMatrices & backSubContr, Eigen::Vector3d sigma_BN, Eigen::Vector3d omega_BN_B, Eigen::Vector3d g_N)
 {
     // Find the DCM from N to B frames
     this->sigma_BN = sigma_BN;
@@ -195,8 +192,10 @@ void PrescribedMotionStateEffector::updateContributions(double integTime, BackSu
     backSubContr.vecTrans = -this->mass * this->rPrimePrime_FcB_B;
 
     // Rotation contributions
+    Eigen::Vector3d u_BVec = {0.0, 0.0, 0.0};
+    u_BVec[rotAxisNum] = u_B;
     Eigen::Matrix3d IPrimePntFc_B = this->omegaTilde_FB_B * this->IPntFc_B - this->IPntFc_B * this->omegaTilde_FB_B;
-    backSubContr.vecRot = - this->mass * this->rTilde_FcB_B * this->rPrimePrime_FcB_B - (IPrimePntFc_B + this->omegaTilde_BN_B * this->IPntFc_B ) * this->omega_FB_B - this->IPntFc_B * this->omegaPrime_FB_B - this->mass * this->omegaTilde_BN_B * rTilde_FcB_B * this->rPrime_FcB_B;
+    backSubContr.vecRot = - ( this->mass * this->rTilde_FcB_B * this->rPrimePrime_FcB_B)  - (IPrimePntFc_B + this->omegaTilde_BN_B * this->IPntFc_B ) * this->omega_FB_B - this->IPntFc_B * this->omegaPrime_FB_B - this->mass * this->omegaTilde_BN_B * rTilde_FcB_B * this->rPrime_FcB_B;
 
     return;
 }
@@ -247,13 +246,13 @@ void PrescribedMotionStateEffector::computePrescribedMotionInertialStates()
 /*! This method is used so that the simulation will ask the effector to update messages */ // called at dynamic freq
 void PrescribedMotionStateEffector::UpdateState(uint64_t CurrentSimNanos)
 {
-//    //! - Zero the command buffer and read the incoming command array
-//    if (this->motorTorqueInMsg.isLinked() && this->motorTorqueInMsg.isWritten())
-//    {
-//        ArrayMotorTorqueMsgPayload incomingCmdBuffer;
-//        incomingCmdBuffer = this->motorTorqueInMsg();
-//        this->u = incomingCmdBuffer.motorTorque[0];
-//    }
+    //! - Zero the command buffer and read the incoming command array
+    if (this->motorTorqueInMsg.isLinked() && this->motorTorqueInMsg.isWritten())
+    {
+        ArrayMotorTorqueMsgPayload incomingCmdBuffer;
+        incomingCmdBuffer = this->motorTorqueInMsg();
+        this->u = incomingCmdBuffer.motorTorque[0];
+    }
 
     /* Compute prescribed body inertial states */
     this->computePrescribedMotionInertialStates();
@@ -268,7 +267,7 @@ void PrescribedMotionStateEffector::computePrescribedParameters(double integTime
     this->r_FM_M = this->r_FM_MInit;
     this->rPrime_FM_M = this->rPrime_FM_MInit;
     this->rPrimePrime_FM_M = this->rPrimePrime_FM_MInit;
-    
+
     double rotAxis_B[3] = {0.0, 0.0, 0.0};
     rotAxis_B[this->rotAxisNum] = 1;
 
@@ -279,8 +278,11 @@ void PrescribedMotionStateEffector::computePrescribedParameters(double integTime
 
     // Convert scalar local variables to prescribed parameters
         // Grab current omega_BN_B
-        this->omega_BN_B = (Eigen::Vector3d)this->hubOmega->getState();
-
+        if (integTime == 0)
+            this->omega_BN_B = this->omega_BN_BInit;
+        else
+            this->omega_BN_B = (Eigen::Vector3d)this->hubOmega->getState();
+    
         // Define omega_FB_B
         this->omega_FB_B.setZero();
         this->omega_FB_B[this->rotAxisNum] = thetaDot_FB;
@@ -289,9 +291,10 @@ void PrescribedMotionStateEffector::computePrescribedParameters(double integTime
         Eigen::Vector3d omegaDot_FB_B;
         omegaDot_FB_B.setZero();
         omegaDot_FB_B[this->rotAxisNum]= thetaDDot_FB;
+        this->omegaTilde_BN_B = eigenTilde(this->omega_BN_B);
         this->omegaPrime_FB_B = omegaDot_FB_B - this->omegaTilde_BN_B * this->omega_FB_B;
-
-    // Compute the DCM from F frame to B frame, dcm_BF
+    
+// Compute the DCM from F frame to B frame, dcm_BF
     double dcm_F0F[3][3];
     double prv_F0F_array[3] = {-theta_FB * rotAxis_B[0], -theta_FB * rotAxis_B[1], -theta_FB * rotAxis_B[2]};
     PRV2C(prv_F0F_array, dcm_F0F);

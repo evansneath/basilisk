@@ -45,11 +45,12 @@ public:
     Eigen::Vector3d r_FM_MInit;
     Eigen::Vector3d rPrime_FM_MInit;
     Eigen::Vector3d rPrimePrime_FM_MInit;
+    Eigen::Vector3d omega_BN_BInit;
     double theta_FBInit;
     double thetaDot_FBInit;
-    double u_B;
     Eigen::Matrix3d dcm_F0B;
     int rotAxisNum;
+    double u_B;
 
     Message<PrescribedMotionMsgPayload> prescribedMotionOutMsg;
     Message<SCStatesMsgPayload> prescribedMotionConfigLogOutMsg;
@@ -58,16 +59,12 @@ public:
 
 private:
     static uint64_t effectorID;
+    double u;                           //!< [N-m] optional motor torque
 
     // GIVEN QUANTITIES FROM USER PYTHON INTERFACE IN BODY FRAME
     Eigen::Matrix3d IPntFc_B; // OR DEFINE WITHIN MEMBER FUNCTION     Eigen::Vector3d IPntFc_B = this->dcmBF*this->IPntFc_F
     Eigen::Vector3d r_FB_B; // DEFINE WITHIN MEMBER FUNCTION     Eigen::Vector3d r_FB_B = r_FM_B + this->r_MB_B
     Eigen::Vector3d r_FcF_B; // OR DEFINE WITHIN MEMBER FUNCTION     Eigen::Vector3d r_FcF_B = this->dcmBF*this->r_FcF_F
-
-    // DCMs
-    Eigen::Matrix3d dcm_BN;
-    Eigen::Matrix3d dcm_BF;
-    Eigen::Matrix3d dcm_BM;
 
     // PRESCRIBED PARAMETERS
     Eigen::Vector3d r_FM_M;
@@ -83,7 +80,7 @@ private:
     Eigen::Vector3d omega_FB_B;
     Eigen::Vector3d omegaPrime_FB_B;
 
-    // Vector quantities
+    // Other vector quantities
     Eigen::Vector3d r_FcB_B;
     Eigen::Vector3d r_FcM_B;
     Eigen::Vector3d rPrime_FcM_B;
@@ -95,7 +92,12 @@ private:
     Eigen::MRPd sigma_BN;
     Eigen::Vector3d sigma_FB;
 
-    // Matrix quantities
+    // DCMs
+    Eigen::Matrix3d dcm_BN;
+    Eigen::Matrix3d dcm_BF;
+    Eigen::Matrix3d dcm_BM;
+
+    // Other matrix quantities
     Eigen::Matrix3d rTilde_FcB_B;
     Eigen::Matrix3d omegaTilde_BN_B;
     Eigen::Matrix3d omegaTilde_FB_B;
@@ -122,7 +124,7 @@ public:
 	void UpdateState(uint64_t CurrentSimNanos);             //!< -- Method for updating information
     void registerStates(DynParamManager& statesIn);         //!< -- Method for registering the effector's states
     void linkInStates(DynParamManager& states);             //!< -- Method for getting access to other states
-    void updateContributions(double integTime, BackSubMatrices & backSubContr, Eigen::Vector3d sigma_BN, Eigen::Vector3d omega_BN_B);  //!< -- Method for back-substitution contributions
+    void updateContributions(double integTime, BackSubMatrices & backSubContr, Eigen::Vector3d sigma_BN, Eigen::Vector3d omega_BN_B, Eigen::Vector3d g_N);  //!< -- Method for back-substitution contributions
     void computeDerivatives(double integTime, Eigen::Vector3d rDDot_BN_N, Eigen::Vector3d omegaDot_BN_B, Eigen::Vector3d sigma_BN);                         //!< -- Method for effector to compute its derivatives
     void updateEffectorMassProps(double integTime);         //!< -- Method for giving the s/c the HRB mass props and prop rates
     void updateEnergyMomContributions(double integTime, Eigen::Vector3d & rotAngMomPntCContr_B, double & rotEnergyContr, Eigen::Vector3d omega_BN_B);       //!< -- Method for computing energy and momentum for effectors
