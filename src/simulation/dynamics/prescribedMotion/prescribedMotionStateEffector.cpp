@@ -195,7 +195,7 @@ void PrescribedMotionStateEffector::updateContributions(double integTime, BackSu
     Eigen::Vector3d u_BVec = {0.0, 0.0, 0.0};
     u_BVec[rotAxisNum] = u_B;
     Eigen::Matrix3d IPrimePntFc_B = this->omegaTilde_FB_B * this->IPntFc_B - this->IPntFc_B * this->omegaTilde_FB_B;
-    backSubContr.vecRot = - ( this->mass * this->rTilde_FcB_B * this->rPrimePrime_FcB_B)  - (IPrimePntFc_B + this->omegaTilde_BN_B * this->IPntFc_B ) * this->omega_FB_B - this->IPntFc_B * this->omegaPrime_FB_B - this->mass * this->omegaTilde_BN_B * rTilde_FcB_B * this->rPrime_FcB_B;
+    backSubContr.vecRot = - (u_BVec + this->mass * this->rTilde_FcB_B * this->rPrimePrime_FcB_B)  - (IPrimePntFc_B + this->omegaTilde_BN_B * this->IPntFc_B ) * this->omega_FB_B - this->IPntFc_B * this->omegaPrime_FB_B - this->mass * this->omegaTilde_BN_B * rTilde_FcB_B * this->rPrime_FcB_B;
 
     return;
 }
@@ -214,11 +214,11 @@ void PrescribedMotionStateEffector::updateEnergyMomContributions(double integTim
     this->omegaTilde_BN_B = eigenTilde(this->omega_BN_B);
     this->omega_FN_B = this->omega_FB_B + this->omega_BN_B;
 
-    // Find rotational angular momentum contribution from hub
-    rotAngMomPntCContr_B = this->IPntFc_B * this->omega_FB_B + this->mass * this->rTilde_FcB_B * this->rPrime_FcB_B;
-
     // Compute rDot_FcB_B
     this->rDot_FcB_B = this->rPrime_FcB_B + this->omegaTilde_BN_B * this->r_FcB_B;
+
+    // Find rotational angular momentum contribution from hub
+    rotAngMomPntCContr_B = this->IPntFc_B * this->omega_FN_B + this->mass * this->rTilde_FcB_B * this->rDot_FcB_B;
 
     // Find rotational energy contribution from the hub
     rotEnergyContr = 0.5 * this->omega_FN_B.dot(this->IPntFc_B * this->omega_FN_B) + 0.5 * this->mass * this->rDot_FcB_B.dot(this->rDot_FcB_B);
@@ -286,10 +286,9 @@ void PrescribedMotionStateEffector::computePrescribedParameters(double integTime
 
     // Define omegaPrime_FB_B
     Eigen::Vector3d omegaDot_FB_B;
-    omegaDot_FB_B.setZero();
-    omegaDot_FB_B[this->rotAxisNum]= thetaDDot_FB;
+    this->omegaPrime_FB_B.setZero();
+    this->omegaPrime_FB_B[this->rotAxisNum]= thetaDDot_FB;
     this->omegaTilde_BN_B = eigenTilde(this->omega_BN_B);
-    this->omegaPrime_FB_B = omegaDot_FB_B - this->omegaTilde_BN_B * this->omega_FB_B;
     
     // Compute the DCM from F frame to B frame, dcm_BF
     double dcm_F0F[3][3];
