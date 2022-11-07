@@ -253,6 +253,19 @@ void Spacecraft::initializeDynamics()
     this->gravField.linkInStates(this->dynManager);
     this->hub.linkInStates(this->dynManager);
 
+    // - Loop through the stateEffectros to link in the states needed
+    for(stateIt = this->states.begin(); stateIt != this->states.end(); stateIt++)
+    {
+        (*stateIt)->linkInStates(this->dynManager);
+    }
+
+    // - Loop through the dynamicEffectors to link in the states needed
+    std::vector<DynamicEffector*>::iterator dynIt;
+    for(dynIt = this->dynEffectors.begin(); dynIt != this->dynEffectors.end(); dynIt++)
+    {
+        (*dynIt)->linkInStates(this->dynManager);
+    }
+
     // - Update the mass properties of the spacecraft to retrieve c_B and cDot_B to update r_BN_N and v_BN_N
     this->updateSCMassProps(0.0);
 
@@ -270,19 +283,6 @@ void Spacecraft::initializeDynamics()
     // - Finally set the translational states r_BN_N and v_BN_N with the corrections
     this->hubR_N->setState(rInit_BN_N);
     this->hubV_N->setState(vInit_BN_N);
-
-    // - Loop through the stateEffectros to link in the states needed
-    for(stateIt = this->states.begin(); stateIt != this->states.end(); stateIt++)
-    {
-        (*stateIt)->linkInStates(this->dynManager);
-    }
-
-    // - Loop through the dynamicEffectors to link in the states needed
-    std::vector<DynamicEffector*>::iterator dynIt;
-    for(dynIt = this->dynEffectors.begin(); dynIt != this->dynEffectors.end(); dynIt++)
-    {
-        (*dynIt)->linkInStates(this->dynManager);
-    }
 
     // If set, read in and prescribe attitude reference motion as initial states
     readOptionalRefMsg();

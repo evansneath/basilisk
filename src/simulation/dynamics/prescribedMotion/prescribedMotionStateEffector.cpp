@@ -277,24 +277,21 @@ void PrescribedMotionStateEffector::computePrescribedParameters(double integTime
     double thetaDDot_FB = ( 1 / ( this->IHubBc_B(this->rotAxisNum,this->rotAxisNum) + this->IPntFc_B(this->rotAxisNum,this->rotAxisNum) ) ) * this->u_B;
 
     // Convert scalar local variables to prescribed parameters
-        // Grab current omega_BN_B
-        if (integTime == 0)
-            this->omega_BN_B = this->omega_BN_BInit;
-        else
-            this->omega_BN_B = (Eigen::Vector3d)this->hubOmega->getState();
-    
-        // Define omega_FB_B
-        this->omega_FB_B.setZero();
-        this->omega_FB_B[this->rotAxisNum] = thetaDot_FB;
+    // Grab current omega_BN_B
+    this->omega_BN_B = (Eigen::Vector3d)this->hubOmega->getState();
 
-        // Define omegaPrime_FB_B
-        Eigen::Vector3d omegaDot_FB_B;
-        omegaDot_FB_B.setZero();
-        omegaDot_FB_B[this->rotAxisNum]= thetaDDot_FB;
-        this->omegaTilde_BN_B = eigenTilde(this->omega_BN_B);
-        this->omegaPrime_FB_B = omegaDot_FB_B - this->omegaTilde_BN_B * this->omega_FB_B;
+    // Define omega_FB_B
+    this->omega_FB_B.setZero();
+    this->omega_FB_B[this->rotAxisNum] = thetaDot_FB;
+
+    // Define omegaPrime_FB_B
+    Eigen::Vector3d omegaDot_FB_B;
+    omegaDot_FB_B.setZero();
+    omegaDot_FB_B[this->rotAxisNum]= thetaDDot_FB;
+    this->omegaTilde_BN_B = eigenTilde(this->omega_BN_B);
+    this->omegaPrime_FB_B = omegaDot_FB_B - this->omegaTilde_BN_B * this->omega_FB_B;
     
-// Compute the DCM from F frame to B frame, dcm_BF
+    // Compute the DCM from F frame to B frame, dcm_BF
     double dcm_F0F[3][3];
     double prv_F0F_array[3] = {-theta_FB * rotAxis_B[0], -theta_FB * rotAxis_B[1], -theta_FB * rotAxis_B[2]};
     PRV2C(prv_F0F_array, dcm_F0F);
