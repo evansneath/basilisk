@@ -195,7 +195,7 @@ void PrescribedMotionStateEffector::updateContributions(double integTime, BackSu
     Eigen::Vector3d u_BVec = {0.0, 0.0, 0.0};
     u_BVec[rotAxisNum] = u_B;
     Eigen::Matrix3d IPrimePntFc_B = this->omegaTilde_FB_B * this->IPntFc_B - this->IPntFc_B * this->omegaTilde_FB_B;
-    backSubContr.vecRot = - (u_BVec + this->mass * this->rTilde_FcB_B * this->rPrimePrime_FcB_B)  - (IPrimePntFc_B + this->omegaTilde_BN_B * this->IPntFc_B ) * this->omega_FB_B - this->IPntFc_B * this->omegaPrime_FB_B - this->mass * this->omegaTilde_BN_B * rTilde_FcB_B * this->rPrime_FcB_B;
+    backSubContr.vecRot = - (this->mass * this->rTilde_FcB_B * this->rPrimePrime_FcB_B)  - (IPrimePntFc_B + this->omegaTilde_BN_B * this->IPntFc_B ) * this->omega_FB_B - this->IPntFc_B * this->omegaPrime_FB_B - this->mass * this->omegaTilde_BN_B * rTilde_FcB_B * this->rPrime_FcB_B;
 
     return;
 }
@@ -246,14 +246,6 @@ void PrescribedMotionStateEffector::computePrescribedMotionInertialStates()
 /*! This method is used so that the simulation will ask the effector to update messages */ // called at dynamic freq
 void PrescribedMotionStateEffector::UpdateState(uint64_t CurrentSimNanos)
 {
-    //! - Zero the command buffer and read the incoming command array
-    if (this->motorTorqueInMsg.isLinked() && this->motorTorqueInMsg.isWritten())
-    {
-        ArrayMotorTorqueMsgPayload incomingCmdBuffer;
-        incomingCmdBuffer = this->motorTorqueInMsg();
-        this->u = incomingCmdBuffer.motorTorque[0];
-    }
-
     /* Compute prescribed body inertial states */
     this->computePrescribedMotionInertialStates();
 

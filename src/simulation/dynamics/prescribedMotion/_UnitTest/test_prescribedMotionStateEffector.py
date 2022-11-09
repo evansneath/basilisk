@@ -192,17 +192,19 @@ def test_prescribedMotion(show_plots):
     # thetaDot_FB_Analytic = []
     # thetaDDot_FB_Analytic = []
 
-    # theta_BN_Analytic = []
+    theta_BN_Analytic = []
     thetaDot_BN_Analytic = []
     # thetaDDot_BN_Analytic = []
     # omega_FB_B_Analytic = [] # Empty list to store analytic omega_FB_B
     # omegaDot_FB_B_Analytic = [] # Empty list to store analytic omegaDot_FB_B
     # omega_BN_B_Analytic = [] # Empty list to store analytic omega_BN_B
     # omegaDot_BN_B_Analytic = []  # Empty list to store analytic omegaDot_BN_B
-    # theta_BN_AnalyticInit = 0.0
+    theta_BN_AnalyticInit = 0.0
     thetaDot_BN_AnalyticInit = -0.1
 
     term1 = scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum]
+    #term2 = scObject.hub.omega_BN_BInit
+    term2 = 0.0
 
     for i in range(0, numElements):
         tt = 1e-9*timespan[i]
@@ -219,7 +221,7 @@ def test_prescribedMotion(show_plots):
         # omega_FB_B_Analytic[rotAxisNum, i] = thetaDot_FB_Analytic[i]
         # omegaDot_FB_B_Analytic[:, i] = [[0.0], [0.0], [0.0]]
         # omegaDot_FB_B_Analytic[rotAxisNum, i] = thetaDDot_FB_Analytic[i]
-        # theta_BN_Analytic.append( ( ( -0.5 / term1 ) * u_B * tt * tt + scObject.hub.omega_BN_BInit * tt + theta_BN_AnalyticInit ) )
+        theta_BN_Analytic.append( ( ( -0.5 / term1 ) * u_B * tt * tt + term2 * tt + theta_BN_AnalyticInit ) )
         thetaDot_BN_Analytic.append( ( - 1 / term1 ) * u_B * tt + thetaDot_BN_AnalyticInit )
         # thetaDDot_BN_Analytic[i] = ( - 1 / scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum] ) * u_B[i]
         # omega_BN_B_Analytic.append( thetaDot_BN_Analytic[i] )

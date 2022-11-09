@@ -26,7 +26,6 @@
 #include "architecture/_GeneralModuleFiles/sys_model.h"
 #include "architecture/utilities/avsEigenMRP.h"
 
-#include "architecture/msgPayloadDefC/ArrayMotorTorqueMsgPayload.h"
 #include "architecture/msgPayloadDefC/SCStatesMsgPayload.h"
 #include "architecture/msgPayloadDefC/PrescribedMotionMsgPayload.h"
 #include "architecture/messaging/messaging.h"
@@ -54,12 +53,10 @@ public:
 
     Message<PrescribedMotionMsgPayload> prescribedMotionOutMsg;
     Message<SCStatesMsgPayload> prescribedMotionConfigLogOutMsg;
-    ReadFunctor<ArrayMotorTorqueMsgPayload> motorTorqueInMsg;
     BSKLogger bskLogger;
 
 private:
     static uint64_t effectorID;
-    double u;                           //!< [N-m] optional motor torque
 
     // GIVEN QUANTITIES FROM USER PYTHON INTERFACE IN BODY FRAME
     Eigen::Matrix3d IPntFc_B; // OR DEFINE WITHIN MEMBER FUNCTION     Eigen::Vector3d IPntFc_B = this->dcmBF*this->IPntFc_F
