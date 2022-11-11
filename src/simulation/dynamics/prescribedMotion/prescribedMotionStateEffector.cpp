@@ -47,7 +47,6 @@ PrescribedMotionStateEffector::PrescribedMotionStateEffector()
     this->dcm_BF.Identity();
     this->dcm_BM.Identity();
     this->dcm_F0B.Identity();
-    this->u = 0.0;
     this->effectorID++; 
     return;
 }
