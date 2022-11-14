@@ -112,7 +112,7 @@ def test_prescribedMotion(show_plots):
     platform.rPrimePrime_FM_MInit = [[0.0], [0.0], [0.0]]
     platform.theta_FBInit = 0.0
     platform.thetaDot_FBInit = 0.0
-    platform.omega_BN_BInit = [[-0.1], [0.0], [0.0]]
+    platform.omega_BN_BInit = [[0.0], [0.0], [0.0]]
     platform.dcm_F0B = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     platform.rotAxisNum = rotAxisNum
     platform.ModelTag = "Platform"
@@ -129,7 +129,7 @@ def test_prescribedMotion(show_plots):
     scObject.hub.r_CN_NInit = [[-4020338.690396649], [7490566.741852513], [5248299.211589362]]
     scObject.hub.v_CN_NInit = [[-5199.77710904224], [-3436.681645356935], [1041.576797498721]]
     scObject.hub.sigma_BNInit = [[0.0], [0.0], [0.0]]
-    scObject.hub.omega_BN_BInit = [[-0.1], [0.0], [0.0]]
+    scObject.hub.omega_BN_BInit = [[0.0], [0.0], [0.0]]
 
     # Add test module to runtime call list
     unitTestSim.AddModelToTask(unitTaskName, scObject)
@@ -194,17 +194,17 @@ def test_prescribedMotion(show_plots):
 
     theta_BN_Analytic = []
     thetaDot_BN_Analytic = []
-    # thetaDDot_BN_Analytic = []
+    thetaDDot_BN_Analytic = []
     # omega_FB_B_Analytic = [] # Empty list to store analytic omega_FB_B
     # omegaDot_FB_B_Analytic = [] # Empty list to store analytic omegaDot_FB_B
     # omega_BN_B_Analytic = [] # Empty list to store analytic omega_BN_B
     # omegaDot_BN_B_Analytic = []  # Empty list to store analytic omegaDot_BN_B
     theta_BN_AnalyticInit = 0.0
-    thetaDot_BN_AnalyticInit = -0.1
+    thetaDot_BN_AnalyticInit = 0.0
 
     term1 = scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum]
-    #term2 = scObject.hub.omega_BN_BInit
-    term2 = 0.0
+    term2 = platform.IPntFc_F[rotAxisNum][rotAxisNum]
+    term3 = platform.IPntFc_F[rotAxisNum][rotAxisNum]
 
     for i in range(0, numElements):
         tt = 1e-9*timespan[i]
@@ -221,8 +221,10 @@ def test_prescribedMotion(show_plots):
         # omega_FB_B_Analytic[rotAxisNum, i] = thetaDot_FB_Analytic[i]
         # omegaDot_FB_B_Analytic[:, i] = [[0.0], [0.0], [0.0]]
         # omegaDot_FB_B_Analytic[rotAxisNum, i] = thetaDDot_FB_Analytic[i]
-        theta_BN_Analytic.append( ( ( -0.5 / term1 ) * u_B * tt * tt + term2 * tt + theta_BN_AnalyticInit ) )
-        thetaDot_BN_Analytic.append( ( - 1 / term1 ) * u_B * tt + thetaDot_BN_AnalyticInit )
+        term = - (1 / (1 - (1 / (term1 + term2)) * term3)) * (1 / (term1 + term2)) * u_B
+        thetaDDot_BN_Analytic.append(term)
+        thetaDot_BN_Analytic.append((term * tt) + thetaDot_BN_AnalyticInit)
+        theta_BN_Analytic.append((0.5 * term * tt * tt) + (thetaDot_BN_AnalyticInit * tt) + theta_BN_AnalyticInit)
         # thetaDDot_BN_Analytic[i] = ( - 1 / scObject.hub.IHubPntBc_B[rotAxisNum][rotAxisNum] ) * u_B[i]
         # omega_BN_B_Analytic.append( thetaDot_BN_Analytic[i] )
         # print(omega_BN_B_Analytic[i,:])
@@ -230,16 +232,21 @@ def test_prescribedMotion(show_plots):
         # omegaDot_BN_B_Analytic[:, i] = [[0.0], [0.0], [0.0]]
         # omegaDot_BN_B_Analytic[rotAxisNum, i] = thetaDDot_BN_Analytic[i]
 
+
     plt.close("all")
 
     # Plotting: analytic results
-    # plt.figure()
-    # plt.clf()
-    # plt.plot(timespan * 1e-9, omega_BN_B_Analytic[:, 0],
-    #          timespan * 1e-9, omega_BN_B_Analytic[:, 1],
-    #          timespan * 1e-9, omega_BN_B_Analytic[:, 2])
-    # plt.xlabel('Time (s)')
-    # plt.ylabel('Analytic omega_BN_B')
+    plt.figure()
+    plt.clf()
+    plt.plot(timespan * 1e-9, thetaDot_BN_Analytic)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Analytic thetaDot_BN_B')
+
+    plt.figure()
+    plt.clf()
+    plt.plot(timespan * 1e-9, theta_BN_Analytic)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Analytic theta_BN_B')
 
     plt.figure()
     plt.clf()
@@ -250,7 +257,7 @@ def test_prescribedMotion(show_plots):
     # Plotting: Difference between numerical and analytical omega_BN_B
     plt.figure()
     plt.clf()
-    plt.plot(timespan * 1e-9, (omega_BN_B[:, rotAxisNum] - thetaDot_BN_Analytic) )
+    plt.plot(timespan * 1e-9, (omega_BN_B[:, rotAxisNum] - thetaDot_BN_Analytic))
     plt.xlabel('Time (s)')
     plt.ylabel('Difference Between Analytic and Simulated omega_BN_B')\
 
@@ -272,6 +279,8 @@ def test_prescribedMotion(show_plots):
     #          timespan * 1e-9, omega_FB_F[:, 2])
     # plt.xlabel('Time (s)')
     # plt.ylabel('Omega_FB_F Components')
+
+    print(orbAngMom_N)
 
     # Plotting: conservation quantities
     plt.figure()

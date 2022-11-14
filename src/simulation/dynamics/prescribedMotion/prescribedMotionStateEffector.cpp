@@ -263,20 +263,33 @@ void PrescribedMotionStateEffector::computePrescribedParameters(double integTime
     rotAxis_B[this->rotAxisNum] = 1;
 
     // Define scalar local variables
-    double theta_FB = ( 0.5 / ( this->IHubBc_B(this->rotAxisNum,this->rotAxisNum) + this->IPntFc_B(this->rotAxisNum,this->rotAxisNum) ) ) * this->u_B * integTime * integTime + this->thetaDot_FBInit * integTime + this->theta_FBInit;
-    double thetaDot_FB = ( 1 / ( this->IHubBc_B(this->rotAxisNum,this->rotAxisNum) + this->IPntFc_B(this->rotAxisNum,this->rotAxisNum) ) ) * this->u_B * integTime + this->thetaDot_FBInit;
-    double thetaDDot_FB = ( 1 / ( this->IHubBc_B(this->rotAxisNum,this->rotAxisNum) + this->IPntFc_B(this->rotAxisNum,this->rotAxisNum) ) ) * this->u_B;
+    if (integTime == 0)
+    {
+        this->IPntFc_B = this->IPntFc_F;
+    }
+    else
+    {
+        this->IPntFc_B = this->dcm_BF * this->IPntFc_F * this->dcm_BF.transpose();
+    }
+    
+    double a = this->IHubBc_B(this->rotAxisNum,this->rotAxisNum);
+    double b = this->IPntFc_B(this->rotAxisNum,this->rotAxisNum);
+    double c = this->IPntFc_B(this->rotAxisNum,this->rotAxisNum);
+
+    double thetaDDot_FB = (1 / (1 - ((1 / (a + b)) * c)))*(1 / c) * this->u_B;
+    double thetaDot_FB =  thetaDDot_FB * integTime + this->thetaDot_FBInit;
+    double theta_FB = 0.5 * thetaDDot_FB * integTime * integTime + this->thetaDot_FBInit * integTime + this->theta_FBInit;
 
     // Convert scalar local variables to prescribed parameters
     // Grab current omega_BN_B
     this->omega_BN_B = (Eigen::Vector3d)this->hubOmega->getState();
 
     // Define omega_FB_B
-    this->omega_FB_B.setZero();
-    this->omega_FB_B[this->rotAxisNum] = thetaDot_FB;
+    Eigen::Vector3d omega_FB_F = {0.0, 0.0, 0.0};
+    omega_FB_F[this->rotAxisNum] = thetaDot_FB;
+    this->omega_FB_B = this->dcm_BF * omega_FB_F;
 
     // Define omegaPrime_FB_B
-    Eigen::Vector3d omegaDot_FB_B;
     this->omegaPrime_FB_B.setZero();
     this->omegaPrime_FB_B[this->rotAxisNum]= thetaDDot_FB;
     this->omegaTilde_BN_B = eigenTilde(this->omega_BN_B);
