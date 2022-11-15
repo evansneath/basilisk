@@ -39,8 +39,6 @@ PrescribedMotionStateEffector::PrescribedMotionStateEffector()
     this->mass = 0.0;
     this->IHubBc_B.Identity();
     this->IPntFc_F.Identity();
-    // this->r_MB_B.setZero();
-    // this->r_FcF_F.setZero();
     this->r_FM_MInit = {1.0, 0.0, 0.0};
     this->rPrime_FM_MInit.setZero();
     this->rPrimePrime_FM_MInit.setZero();
@@ -143,7 +141,6 @@ void PrescribedMotionStateEffector::updateEffectorMassProps(double integTime)
 
     // Compute the effector's CoM with respect to point B
     this->r_FM_B = this->dcm_BM * this->r_FM_M;
-    // std::cout << this->r_FM_B << std::endl;
     this->r_FB_B = this->r_FM_B + this->r_MB_B;
     this->r_FcF_B = this->dcm_BF * this->r_FcF_F;
     this->r_FcB_B = this->r_FcF_B + this->r_FB_B;
@@ -191,8 +188,6 @@ void PrescribedMotionStateEffector::updateContributions(double integTime, BackSu
     backSubContr.vecTrans = -this->mass * this->rPrimePrime_FcB_B;
 
     // Rotation contributions
-    Eigen::Vector3d u_BVec = {0.0, 0.0, 0.0};
-    u_BVec[rotAxisNum] = u_B;
     Eigen::Matrix3d IPrimePntFc_B = this->omegaTilde_FB_B * this->IPntFc_B - this->IPntFc_B * this->omegaTilde_FB_B;
     backSubContr.vecRot = - (this->mass * this->rTilde_FcB_B * this->rPrimePrime_FcB_B)  - (IPrimePntFc_B + this->omegaTilde_BN_B * this->IPntFc_B ) * this->omega_FB_B - this->IPntFc_B * this->omegaPrime_FB_B - this->mass * this->omegaTilde_BN_B * rTilde_FcB_B * this->rPrime_FcB_B;
 
@@ -274,9 +269,7 @@ void PrescribedMotionStateEffector::computePrescribedParameters(double integTime
     
     double a = this->IHubBc_B(this->rotAxisNum,this->rotAxisNum);
     double b = this->IPntFc_B(this->rotAxisNum,this->rotAxisNum);
-    double c = this->IPntFc_B(this->rotAxisNum,this->rotAxisNum);
-
-    double thetaDDot_FB = (1 / (1 - ((1 / (a + b)) * c)))*(1 / c) * this->u_B;
+    double thetaDDot_FB = (1 / (1 - ((1 / (a + b)) * b)))*(1 / b) * this->u;
     double thetaDot_FB =  thetaDDot_FB * integTime + this->thetaDot_FBInit;
     double theta_FB = 0.5 * thetaDDot_FB * integTime * integTime + this->thetaDot_FBInit * integTime + this->theta_FBInit;
 
