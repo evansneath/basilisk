@@ -35,88 +35,87 @@
 /*! @brief prescribed motion state effector class */
 class PrescribedMotionStateEffector: public StateEffector, public SysModel {
 public:
-    // GIVEN QUANTITIES FROM USER PYTHON INTERFACE
     double mass;
-    Eigen::Matrix3d IHubBc_B;
-    Eigen::Matrix3d IPntFc_F;
-    Eigen::Vector3d r_MB_B;
-    Eigen::Vector3d r_FcF_F;
-    Eigen::Vector3d r_FM_MInit;
-    Eigen::Vector3d rPrime_FM_MInit;
-    Eigen::Vector3d rPrimePrime_FM_MInit;
-    Eigen::Vector3d omega_BN_BInit;
-    double theta_FBInit;
-    double thetaDot_FBInit;
-    Eigen::Matrix3d dcm_F0B;
-    int rotAxisNum;
-    double u_B;
+    Eigen::Matrix3d IHubBc_B;                           //!< [kg-m^2] Inertia of hub about point Bc in B frame components
+    Eigen::Matrix3d IPntFc_F;                           //!< [kg-m^2] Inertia of prescribed body about point Fc in F frame components
+    Eigen::Vector3d r_MB_B;                             //!< [m] position vector of point M relative to point B in B frame components
+    Eigen::Vector3d r_FcF_F;                            //!< [m] position vector of point Fc relative to point F in F frame components
+    Eigen::Vector3d r_FM_MInit;                         //!< [m] initial position vector of point F relative to point M in M frame components
+    Eigen::Vector3d rPrime_FM_MInit;                    //!< [m/s] B frame time derivative of initial position vector r_FM_M in M frame components
+    Eigen::Vector3d rPrimePrime_FM_MInit;               //!< [m/s^2] B frame time derivative of initial vector rPrime_FM_M in M frame components
+    Eigen::Vector3d omega_BN_BInit;                     //!< [rad/s] initial angular velocity vector of B frame relative to the inertial frame in B frame components
+    double theta_FBInit;                                //!< [rad] initial rotation angle of the F frame relative to the B frame
+    double thetaDot_FBInit;                             //!< [rad/s] initial time derivative of theta_FB
+    Eigen::Matrix3d dcm_F0B;                            //!< DCM from the body frame to the F0 frame (F frame for theta=0)
+    int rotAxisNum;                                     //!< [0,1,2] number corresponding to the principal body axis the prescribed body is spinning about
+    double u;                                           //!< [N-m] internal torque applied by the prescribed body
 
-    Message<PrescribedMotionMsgPayload> prescribedMotionOutMsg;
-    Message<SCStatesMsgPayload> prescribedMotionConfigLogOutMsg;
-    BSKLogger bskLogger;
+    Message<PrescribedMotionMsgPayload> prescribedMotionOutMsg;     //!< state output message
+    Message<SCStatesMsgPayload> prescribedMotionConfigLogOutMsg;    //!< state config log message
+    BSKLogger bskLogger;                                            //!< -- BSK Logging
 
 private:
-    static uint64_t effectorID;
+    static uint64_t effectorID;                                     //!< [] ID number of this panel
 
-    // GIVEN QUANTITIES FROM USER PYTHON INTERFACE IN BODY FRAME
-    Eigen::Matrix3d IPntFc_B; // OR DEFINE WITHIN MEMBER FUNCTION     Eigen::Vector3d IPntFc_B = this->dcmBF*this->IPntFc_F
-    Eigen::Vector3d r_FB_B; // DEFINE WITHIN MEMBER FUNCTION     Eigen::Vector3d r_FB_B = r_FM_B + this->r_MB_B
-    Eigen::Vector3d r_FcF_B; // OR DEFINE WITHIN MEMBER FUNCTION     Eigen::Vector3d r_FcF_B = this->dcmBF*this->r_FcF_F
+    // Given quantities from user in python
+    Eigen::Matrix3d IPntFc_B;                           //!< [kg-m^2] Inertia of prescribed body about point Fc in B frame components
+    Eigen::Vector3d r_FB_B;                             //!< [m] position vector of point F relative to point B in B frame components
+    Eigen::Vector3d r_FcF_B;                            //!< [m] position vector of point Fc relative to point F in B frame components
 
-    // PRESCRIBED PARAMETERS
-    Eigen::Vector3d r_FM_M;
-    Eigen::Vector3d rPrime_FM_M;
-    Eigen::Vector3d rPrimePrime_FM_M;
-    Eigen::Vector3d omega_FB_F;
-    Eigen::Vector3d omegaPrime_FB_F;
+    // Prescribed parameters
+    Eigen::Vector3d r_FM_M;                             //!< [m] position vector of point F relative to point M in M frame components
+    Eigen::Vector3d rPrime_FM_M;                        //!< [m/s] B frame time derivative of position vector r_FM_M in M frame components
+    Eigen::Vector3d rPrimePrime_FM_M;                   //!< [m/s^2] B frame time derivative of vector rPrime_FM_M in M frame components
+    Eigen::Vector3d omega_FB_F;                         //!< [rad/s] angular velocity vector of F frame relative to the B frame in F frame components
+    Eigen::Vector3d omegaPrime_FB_F;                    //!< [rad/s^2] B frame time derivative of omega_FB_F in F frame components
 
-    // PRESCRIBED PARAMETERS IN BODY FRAME
-    Eigen::Vector3d r_FM_B;
-    Eigen::Vector3d rPrime_FM_B;
-    Eigen::Vector3d rPrimePrime_FM_B;
-    Eigen::Vector3d omega_FB_B;
-    Eigen::Vector3d omegaPrime_FB_B;
+    // Prescribed parameters in body frame components
+    Eigen::Vector3d r_FM_B;                             //!< [m] position vector of point F relative to point M in B frame components
+    Eigen::Vector3d rPrime_FM_B;                        //!< [m/s] B frame time derivative of position vector r_FM_B
+    Eigen::Vector3d rPrimePrime_FM_B;                   //!< [m/s^2] B frame time derivative of rPrime_FM_B
+    Eigen::Vector3d omega_FB_B;                         //!< [rad/s] angular velocity vector of F frame relative to the B frame in B frame components
+    Eigen::Vector3d omegaPrime_FB_B;                    //!< [rad/s^2] B frame time derivative of omega_FB_B in B frame components
 
     // Other vector quantities
-    Eigen::Vector3d r_FcB_B;
-    Eigen::Vector3d r_FcM_B;
-    Eigen::Vector3d rPrime_FcM_B;
-    Eigen::Vector3d rPrime_FcB_B;
-    Eigen::Vector3d rPrimePrime_FcB_B;
-    Eigen::Vector3d omega_BN_B;
-    Eigen::Vector3d omega_FN_B;
-    Eigen::Vector3d rDot_FcB_B;
-    Eigen::MRPd sigma_BN;
-    Eigen::Vector3d sigma_FB;
+    Eigen::Vector3d r_FcM_B;                            //!< [m] position vector of F frame center of mass relative to point M in B frame components
+    Eigen::Vector3d r_FcB_B;                            //!< [m] position vector of F frame center of mass relative to point B in B frame components
+    Eigen::Vector3d rPrime_FcM_B;                       //!< [m/s] B frame time derivative of position vector r_FcM_B in B frame components
+    Eigen::Vector3d rPrime_FcB_B;                       //!< [m/s] B frame time derivative of position vector r_FcM_B in B frame components
+    Eigen::Vector3d rPrimePrime_FcB_B;                  //!< [m/s^2] B frame time derivative of rPrime_FcB_B in B frame components
+    Eigen::Vector3d omega_BN_B;                         //!< [rad/s] angular velocity vector of B frame relative to the inertial frame in B frame components
+    Eigen::Vector3d omega_FN_B;                         //!< [rad/s] angular velocity vector of F frame relative to the inertial frame in B frame components
+    Eigen::Vector3d rDot_FcB_B;                         //!< [m/s] inertial time derivative of position vector r_FcB_B in B frame components
+    Eigen::MRPd sigma_BN;                               //!< MRP attitude of B frame relative to the inertial frame
+    Eigen::Vector3d sigma_FB;                           //!< MRP attitude of frame F relative to the B frame
 
     // DCMs
-    Eigen::Matrix3d dcm_BN;
-    Eigen::Matrix3d dcm_BF;
-    Eigen::Matrix3d dcm_BM;
+    Eigen::Matrix3d dcm_BN;                             //!< DCM from inertial frame to B frame
+    Eigen::Matrix3d dcm_BF;                             //!< DCM from F frame to B frame
+    Eigen::Matrix3d dcm_BM;                             //!< DCM from M frame to B frame
 
     // Other matrix quantities
-    Eigen::Matrix3d rTilde_FcB_B;
-    Eigen::Matrix3d omegaTilde_BN_B;
-    Eigen::Matrix3d omegaTilde_FB_B;
+    Eigen::Matrix3d rTilde_FcB_B;                       //!< [m] tilde matrix of r_FcB_B in B frame components
+    Eigen::Matrix3d omegaTilde_BN_B;                    //!< [rad/s] tilde matrix of omega_BN_B in B frame components
+    Eigen::Matrix3d omegaTilde_FB_B;                    //!< [rad/s] tilde matrix of omega_FB_B in B frame components
 
     // Effector body properties
-    Eigen::Vector3d r_FcN_N;
-    Eigen::Vector3d v_FcN_N;
-    Eigen::Vector3d sigma_FN;
-    Eigen::Vector3d omega_FN_F;
+    Eigen::Vector3d r_FcN_N;                            //!< [m] position vector of F frame center of mass relative to the inertial frame origin in inertial frame components
+    Eigen::Vector3d v_FcN_N;                            //!< [m/s] inertial velocity vector of Fc relative to inertial frame in inertial frame components
+    Eigen::Vector3d sigma_FN;                           //!< MRP attitude of frame F relative to the inertial frame
+    Eigen::Vector3d omega_FN_F;                         //!< [rad/s] angular velocity vector of frame F relative to the inertial frame in F frame components
 
     // States
-    StateData *hubSigma;
-    StateData *hubOmega;
-    StateData *hubPosition;
-    StateData *hubVelocity;
-    Eigen::MatrixXd *c_B;
-    Eigen::MatrixXd *cPrime_B;
+    StateData *hubSigma;                                //!< hub/inertial attitude represented by MRP
+    StateData *hubOmega;                                //!< hub/inertial angular velocity vector in B frame components
+    StateData *hubPosition;                             //!< hub/inertial position vector in inertial frame components
+    StateData *hubVelocity;                             //!< hub/inertial velocity vector in inertial frame components
+    Eigen::MatrixXd *c_B;                               //!< [m] vector from point B to CoM of s/c in B frame components
+    Eigen::MatrixXd *cPrime_B;                          //!< [m/s] body time derivative of vector c_B in B frame components
 
 public:
-    PrescribedMotionStateEffector();    //!< -- Constructor
-    ~PrescribedMotionStateEffector();   //!< -- Destructor
-    void Reset(uint64_t CurrentClock);                   //!< -- Method for reset
+    PrescribedMotionStateEffector();                        //!< -- Constructor
+    ~PrescribedMotionStateEffector();                       //!< -- Destructor
+    void Reset(uint64_t CurrentClock);                      //!< -- Method for reset
     void writeOutputStateMessages(uint64_t CurrentClock);   //!< -- Method for writing the output messages
 	void UpdateState(uint64_t CurrentSimNanos);             //!< -- Method for updating information
     void registerStates(DynParamManager& statesIn);         //!< -- Method for registering the effector's states
@@ -126,8 +125,8 @@ public:
     void updateEffectorMassProps(double integTime);         //!< -- Method for giving the s/c the HRB mass props and prop rates
     void updateEnergyMomContributions(double integTime, Eigen::Vector3d & rotAngMomPntCContr_B, double & rotEnergyContr, Eigen::Vector3d omega_BN_B);       //!< -- Method for computing energy and momentum for effectors
     void prependSpacecraftNameToStates();                   //!< Method used for multiple spacecraft
-    void computePrescribedMotionInertialStates();               //!< Method for computing the effector's states
-    void computePrescribedParameters(double integTime);
+    void computePrescribedMotionInertialStates();           //!< Method for computing the effector's states
+    void computePrescribedParameters(double integTime);     //!< Method for computing prescribed parameters
 
 };
 
