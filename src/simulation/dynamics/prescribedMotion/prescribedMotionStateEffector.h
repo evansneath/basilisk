@@ -25,11 +25,9 @@
 #include "simulation/dynamics/_GeneralModuleFiles/stateData.h"
 #include "architecture/_GeneralModuleFiles/sys_model.h"
 #include "architecture/utilities/avsEigenMRP.h"
-
 #include "architecture/msgPayloadDefC/SCStatesMsgPayload.h"
 #include "architecture/msgPayloadDefC/PrescribedMotionMsgPayload.h"
 #include "architecture/messaging/messaging.h"
-
 #include "architecture/utilities/bskLogging.h"
 
 /*! @brief prescribed motion state effector class */
