@@ -98,7 +98,7 @@ void Update_prescribed2DOF(Prescribed2DOFConfig *configData, uint64_t callTime, 
     v3Copy(prescribedMotionIn.sigma_FM, configData->sigma_FM);
     
     /*! Define initial variables */
-    if (SpinningBodyMsg_C_timeWritten(&configData->spinningBodyTwoDOFInMsg) == callTime)
+    if (SpinningBodyTwoDOFMsg_C_timeWritten(&configData->spinningBodyTwoDOFInMsg) == callTime)
     {
         double prv_FM_array[3];
         MRP2PRV(configData->sigma_FM, prv_FM_array);
