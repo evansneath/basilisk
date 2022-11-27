@@ -115,6 +115,8 @@ void Update_prescribed2DOF(Prescribed2DOFConfig *configData, uint64_t callTime, 
     /*! Convert two reference angles and rotation axes to PRVs */
     double prv_F1F0_array[3];
     double prv_MF1_array[3];
+    v3Normalize(configData->rotAxis1_M, configData->rotAxis1_M);
+    v3Normalize(configData->rotAxis2_M, configData->rotAxis2_M);
     v3Scale(theta1Ref, configData->rotAxis1_M, prv_F1F0_array);
     v3Scale(theta2Ref, configData->rotAxis2_M, prv_MF1_array);
 
@@ -131,13 +133,15 @@ void Update_prescribed2DOF(Prescribed2DOFConfig *configData, uint64_t callTime, 
     C2PRV(dcm_MF0, prv_MF0_array);
 
     /*! Convert the DCM to a single reference angle */
-    double theteRef = v3Norm(prv_MF0_array); // [rad]
-    double theteDotRef2 = 0.0;
+    double thetaRef = v3Norm(prv_MF0_array); // [rad]
+    double thetaDotRef = 0.0;
+    double rotAxis_M[3];
+    v3Normalize(prv_MF0_array, rotAxis_M);
 
     /*! Define temporal information */
     double tf = sqrt(((0.5 * fabs(thetaRef - configData->thetaInit)) * 8) / configData->thetaDDotMax); // [s]
     double ts = tf / 2; // switch time [s]
-    double t = callTime*1e-9 - configData->t0; // current time [s]
+    double t = callTime*1e-9 - configData->tInit; // current time [s]
 
     /*! Define scalar module states */
     double thetaDDot;
@@ -169,9 +173,8 @@ void Update_prescribed2DOF(Prescribed2DOFConfig *configData, uint64_t callTime, 
     }
 
     /*! Determine omega_FM_F and omegaPrime_FM_F parameters */
-    v3Normalize(configData->rotAxis_M, configData->rotAxis_M);
-    v3Scale(thetaDot, configData->rotAxis_M, configData->omega_FM_F);
-    v3Scale(thetaDDot, configData->rotAxis_M, configData->omegaPrime_FM_F);
+    v3Scale(thetaDot, rotAxis_M, configData->omega_FM_F);
+    v3Scale(thetaDDot, rotAxis_M, configData->omegaPrime_FM_F);
 
     /*! Determine sigma_FM, mrp from F frame to M frame */
     double dcm_FF0[3][3];
@@ -179,13 +182,13 @@ void Update_prescribed2DOF(Prescribed2DOFConfig *configData, uint64_t callTime, 
     /*! Determine dcm_FF0 */
     double prv_FF0_array[3];
     double theta_FF0 = theta - configData->thetaInit;
-    v3Scale(theta_FF0, configData->rotAxis_M, prv_FF0_array);
+    v3Scale(theta_FF0, rotAxis_M, prv_FF0_array);
     PRV2C(prv_FF0_array, dcm_FF0);
 
     /*! Determine dcm_F0M */
     double dcm_F0M[3][3];
     double prv_F0M_array[3];
-    v3Scale(configData->thetaInit, configData->rotAxis_M, prv_F0M_array);
+    v3Scale(configData->thetaInit, rotAxis_M, prv_F0M_array);
     PRV2C(prv_F0M_array, dcm_F0M);
 
     /*! Determine dcm_FM */
