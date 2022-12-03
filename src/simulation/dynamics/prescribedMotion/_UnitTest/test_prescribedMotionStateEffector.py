@@ -37,6 +37,8 @@ import matplotlib.pyplot as plt
 from Basilisk.simulation import spacecraft, prescribedMotionStateEffector, gravityEffector
 from Basilisk.utilities import macros
 
+plt.rcParams['text.usetex'] = True
+
 
 # uncomment this line is this test is to be skipped in the global unit test run, adjust message as needed
 # @pytest.mark.skipif(conditionstring)
@@ -216,28 +218,34 @@ def test_prescribedMotion(show_plots):
     plt.figure()
     plt.clf()
     plt.plot(timespan * 1e-9, thetaDot_BN_Analytic)
+    plt.title(r'Analytic ${}^B \dot{\theta}_{\mathcal{B}/\mathcal{N}}$')
+    plt.ylabel('(rad/s)')
     plt.xlabel('Time (s)')
-    plt.ylabel('Analytic thetaDot_BN_B')
 
     plt.figure()
     plt.clf()
     plt.plot(timespan * 1e-9, theta_BN_Analytic)
+    plt.title(r'Analytic ${}^B \theta_{\mathcal{B}/\mathcal{N}}$')
+    plt.ylabel('(rad)')
     plt.xlabel('Time (s)')
-    plt.ylabel('Analytic theta_BN_B')
+
 
     # Plotting: prescribed torque
     plt.figure()
     plt.clf()
     plt.plot(timespan * 1e-9, uPrescribed)
+    plt.title('Prescribed Torque')
+    plt.ylabel('(Nm)')
     plt.xlabel('Time (s)')
-    plt.ylabel('Prescribed Torque')
+
 
     # Plotting: difference between numerical and analytical omega_BN_B
     plt.figure()
     plt.clf()
     plt.plot(timespan * 1e-9, (omega_BN_B[:, rotAxisNum] - thetaDot_BN_Analytic))
+    plt.title(r'Analytic/Simulated ${}^B \omega_{\mathcal{B}/\mathcal{N}}$ Difference')
+    plt.ylabel('(rad)')
     plt.xlabel('Time (s)')
-    plt.ylabel('Difference Between Analytic and Simulated omega_BN_B')
 
     # Plotting: conservation quantities
     plt.figure()
@@ -245,22 +253,25 @@ def test_prescribedMotion(show_plots):
     plt.plot(timespan * 1e-9, (orbAngMom_N[:, 1] - orbAngMom_N[0, 1]) / orbAngMom_N[0, 1],
              timespan * 1e-9, (orbAngMom_N[:, 2] - orbAngMom_N[0, 2]) / orbAngMom_N[0, 2],
              timespan * 1e-9, (orbAngMom_N[:, 3] - orbAngMom_N[0, 3]) / orbAngMom_N[0, 3])
+    plt.title('Orbital Angular Momentum')
+    plt.ylabel('Relative Difference')
     plt.xlabel('Time (s)')
-    plt.ylabel('Orbital Angular Momentum Relative Difference')
 
     plt.figure()
     plt.clf()
     plt.plot(timespan * 1e-9, (orbEnergy[:, 1] - orbEnergy[0, 1]) / orbEnergy[0, 1])
+    plt.title('Orbital Energy')
+    plt.ylabel('Relative Difference')
     plt.xlabel('Time (s)')
-    plt.ylabel('Orbital Energy Relative Difference')
 
     plt.figure()
     plt.clf()
     plt.plot(timespan * 1e-9, (rotAngMom_N[:, 1] - rotAngMom_N[0, 1]) / rotAngMom_N[0, 1],
              timespan * 1e-9, (rotAngMom_N[:, 2] - rotAngMom_N[0, 2]),
              timespan * 1e-9, (rotAngMom_N[:, 3] - rotAngMom_N[0, 3]))
+    plt.title('Rotational Angular Momentum')
+    plt.ylabel('Relative Difference')
     plt.xlabel('Time (s)')
-    plt.ylabel('Rotational Angular Momentum Relative Difference')
 
     if show_plots:
         plt.show()
