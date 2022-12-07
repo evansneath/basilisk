@@ -19,10 +19,9 @@
 
 #pragma once
 
-#include <Eigen/Dense>
+#include "architecture/utilities/orbitalMotion.h"
 #include "simulation/dynamics/_GeneralModuleFiles/gravityEffector.h"
-#include <architecture/utilities/orbitalMotion.h>
-
+#include <Eigen/Dense>
 
 //! @brief The KeplerianOrbit class represents an elliptical orbit and provides a coherent set of
 //! common outputs such as position and velocity, orbital period, semi-parameter, etc. It uses the
