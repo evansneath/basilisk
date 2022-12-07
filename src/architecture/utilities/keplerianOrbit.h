@@ -30,7 +30,7 @@
 class KeplerianOrbit {
 public:
     KeplerianOrbit();
-    KeplerianOrbit(classicElements oe, GravBodyData* planet);
+    KeplerianOrbit(ClassicElements oe, GravBodyData* planet);
     KeplerianOrbit(const KeplerianOrbit &orig);
     ~KeplerianOrbit();
 
@@ -59,7 +59,7 @@ public:
     double p();
     double rDot();
     double c3();
-    classicElements oe();
+    ClassicElements oe();
     void set_planet(GravBodyData* plt);
     void set_a(double a);
     void set_e(double e);
