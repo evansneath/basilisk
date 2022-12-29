@@ -34,6 +34,8 @@ Version |release|
 -----------------
 - Refactored :ref:`keplerianOrbit` to not depend on the ``gravityEffector`` class
 - Updated Basilisk install documentation to discuss accessing source code from GitHub.com
+- Added documentation in :ref:`bskPrinciples-4` on how to read the current message values
+- Highlighted the challege of setting up a ``recorder`` on a re-directed message in :ref:`bskPrinciples-7`
 
 
 Version 2.1.5 (Dec. 13, 2022)
