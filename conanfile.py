@@ -108,17 +108,6 @@ class BasiliskConan(ConanFile):
             except:
                 pass
 
-    try:
-        consoleReturn = str(subprocess.check_output(["conan", "remote", "list", "--raw"]))
-        conanRepos = ["bincrafters https://bincrafters.jfrog.io/artifactory/api/conan/public-conan"
-                      ]
-        for item in conanRepos:
-            if item not in consoleReturn:
-                print("Configuring: " + statusColor + item + endColor)
-                cmdString = ["conan", "remote", "add"] + item.split(" ")
-                subprocess.check_call(cmdString)
-    except:
-        print("conan: " + failColor + "Error configuring conan repo information." + endColor)
     print(statusColor + "Checking conan configuration:" + endColor + " Done")
 
     try:
@@ -190,16 +179,15 @@ class BasiliskConan(ConanFile):
             self.requires.add("libpng/1.6.38")
             self.requires.add("freetype/2.12.1")
             self.requires.add("glib/2.70.0")
-            self.requires.add("opencv/4.1.1@conan/stable")
+            self.requires.add("opencv/4.1.2")
             self.requires.add("zlib/1.2.12")
             self.requires.add("bzip2/1.0.8")
             self.options['opencv'].jasper = False
 
         if self.options.vizInterface or self.options.opNav:
             self.requires.add("libsodium/1.0.18")
-            self.requires.add("protobuf/3.5.2@bincrafters/stable")
-            self.requires.add("cppzmq/4.3.0@bincrafters/stable")
-            self.requires.add("protoc_installer/3.5.2@bincrafters/stable")
+            self.requires.add("protobuf/3.9.1")
+            self.requires.add("cppzmq/4.5.0")
 
     def configure(self):
         if self.options.clean:
@@ -263,15 +251,6 @@ class BasiliskConan(ConanFile):
         bskPath = os.getcwd()
         os.chdir(os.path.join(bskPath, "src/architecture/messaging/msgAutoSource"))
         self.generateMessageModules(bskPath)
-        if self.options.vizInterface:
-            # build the protobuffer support files
-            bskPath = os.getcwd()
-            os.chdir(os.path.join(bskPath, 'src', 'utilities', 'vizProtobuffer'))
-            print(statusColor + "Building protobuffer interface files:" + endColor, end=" ")
-            cmdString = ["protoc", "--cpp_out=./", "vizMessage.proto"]
-            subprocess.check_call(cmdString)
-            print("Done")
-            os.chdir(bskPath)
 
         if self.options.pathToExternalModules:
             print(statusColor + "Including External Folder: " + endColor + str(self.options.pathToExternalModules))
